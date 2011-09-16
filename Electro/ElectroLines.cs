@@ -161,33 +161,67 @@ namespace Electro
 				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
 			}
 		}
-		[CommandMethod("Proba")]
-		public void Proba()
+		
+//		public ObjectIdCollection GetGroupPrimitives(string groupname, Transaction trans, Document acad, Database CurDb)
+//		{
+//			foreach (SelectedObject selectedObj in selectionSet)
+//			{
+//				if (selectedObj != null)
+//				{
+//					Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
+//					if (entity!=null)
+//					{
+//						if (entity.ExtensionDictionary!=ObjectId.Null)
+//						{
+//							using (DBDictionary dict = acadTrans.GetObject(
+//								entity.ExtensionDictionary, OpenMode.ForRead, false) as DBDictionary)
+//							{
+//								if (dict.Contains(AppRecordKey))
+//								{
+//									//Получаем XRecord
+//									Xrecord xrecord = acadTrans.GetObject(
+//										dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
+//									ResultBuffer buffer = xrecord.Data;
+//									//Проходим по каждому значению в XRecord
+//									foreach (TypedValue recordValue in buffer)
+//									{
+//										//Проверяем, была ли у нас такая группа?
+//										if (GroupLenghts.ContainsKey(recordValue.Value.ToString()))
+//										{
+//											GroupLenghts[recordValue.Value.ToString()] += entity.GetDistanceAtParameter(entity.EndParam);
+//										}
+//										else
+//										{
+//											GroupLenghts.Add(recordValue.Value.ToString(), entity.GetDistanceAtParameter(entity.EndParam));
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//			foreach (KeyValuePair<string, double> kvp in GroupLenghts)
+//			{
+//				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
+//			}
+//		}
+//		
+		[CommandMethod("GetLines")]
+		public void GetLines()
 		{
 			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
 			Database acadCurDb = acadDocument.Database;
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
-				//Выделять будем только линии и полилинии. Создаем фильтр
-				TypedValue[] acadFilterValues = new TypedValue[4];
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LINE"),1);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),2);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "OR>"),3);
-				SelectionFilter acadSelFilter = new SelectionFilter(acadFilterValues);
-				//Выделяем ВСЕ линии и полилинии на незамороженных слоях
-				SelectionSet selectionSet = acadDocument.Editor.SelectAll(acadSelFilter).Value;
-				//Проходим по получившемуся выделению
-				foreach (SelectedObject selectedObj in selectionSet)
+				BlockTable blockTable = acadTrans.GetObject(acadCurDb.BlockTableId, OpenMode.ForRead) as BlockTable;
+				BlockTableRecord blockTableRecord = acadTrans.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForRead) as BlockTableRecord;
+								
+				var lines = from ObjectId line in blockTableRecord where acadTrans.GetObject(line, OpenMode.ForRead) is Line select (Line)acadTrans.GetObject(line, OpenMode.ForRead);
+
+				foreach (Line line in lines)
 				{
-					if (selectedObj != null)
-					{
-						Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
-						if (entity!=null)
-						{
-							acadDocument.Editor.WriteMessage("\nДлина: {0}", entity.GetDistanceAtParameter(entity.EndParam));
-						}
-					}
+					acadDocument.Editor.WriteMessage("\nДлина: {0}", line.Length);
 				}
 			}
 		}
