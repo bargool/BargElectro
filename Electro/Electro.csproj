@@ -8,8 +8,8 @@
     <ProjectGuid>{C026BB35-42F0-4EA5-8AFB-9F5D3A83FCAD}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Electro</RootNamespace>
-    <AssemblyName>Electro</AssemblyName>
+    <RootNamespace>BargElectro</RootNamespace>
+    <AssemblyName>BargElectro</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -42,7 +42,7 @@
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <StartAction>Project</StartAction>
+    <StartAction>Program</StartAction>
     <StartProgram>C:\Program Files\AutoCAD 2010\acad.exe</StartProgram>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
   </PropertyGroup>

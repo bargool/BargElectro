@@ -1,28 +1,35 @@
-﻿using System;
+﻿//Microsoft
+using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using System.Text;
 
+//Autodesk
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.EditorInput;
 
-[assembly: CommandClass(typeof(Electro.ElectroLines))]
+[assembly: CommandClass(typeof(BargElectro.ElectroLines))]
 
-namespace Electro
+namespace BargElectro
 {
 	public class ElectroLines
 	{
 		const string AppRecordKey = "BargElectroLinesGroup";
+		Document acadDocument;
+		Database acadCurDb;
+		
+		public ElectroLines()
+		{
+			acadDocument = Application.DocumentManager.MdiActiveDocument;
+			acadCurDb = acadDocument.Database;
+		}
 		
 		[CommandMethod("AddLinesToGroup")]
 		public void AddLinesToGroup()
 		{
-			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
-			Database acadCurDb = acadDocument.Database;
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
 				//Спрашиваем имя группы
@@ -54,8 +61,6 @@ namespace Electro
 							if (entity!=null)
 							{
 								TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
-								//data.SetValue(new TypedValue((int)DxfCode.Text, "GroupLine"),0);
-								//data .SetValue (new TypedValue((int)DxfCode.Text, GroupName),0);
 								ResultBuffer buffer = new ResultBuffer(data);
 								
 								if (entity.ExtensionDictionary==ObjectId.Null)
@@ -97,9 +102,6 @@ namespace Electro
 		{
 			//Dictionary, в котором будут храниться номера групп и длины
 			Dictionary<string, double> GroupLenghts = new Dictionary<string, double>();
-			
-			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
-			Database acadCurDb = acadDocument.Database;
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
 				//Спрашиваем имя группы
@@ -123,32 +125,24 @@ namespace Electro
 					if (selectedObj != null)
 					{
 						Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
+						
 						if (entity!=null)
 						{
-							if (entity.ExtensionDictionary!=ObjectId.Null)
+							Xrecord record = getXrecord(AppRecordKey, selectedObj.ObjectId, acadTrans);
+							if (record != null)
 							{
-								using (DBDictionary dict = acadTrans.GetObject(
-									entity.ExtensionDictionary, OpenMode.ForRead, false) as DBDictionary)
+								ResultBuffer buffer = record.Data;
+								//Проходим по каждому значению в XRecord
+								foreach (TypedValue recordValue in buffer)
 								{
-									if (dict.Contains(AppRecordKey))
+									//Проверяем, была ли у нас такая группа?
+									if (GroupLenghts.ContainsKey(recordValue.Value.ToString()))
 									{
-										//Получаем XRecord
-										Xrecord xrecord = acadTrans.GetObject(
-											dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
-										ResultBuffer buffer = xrecord.Data;
-										//Проходим по каждому значению в XRecord
-										foreach (TypedValue recordValue in buffer)
-										{
-											//Проверяем, была ли у нас такая группа?
-											if (GroupLenghts.ContainsKey(recordValue.Value.ToString()))
-											{
-												GroupLenghts[recordValue.Value.ToString()] += entity.GetDistanceAtParameter(entity.EndParam);
-											}
-											else
-											{
-												GroupLenghts.Add(recordValue.Value.ToString(), entity.GetDistanceAtParameter(entity.EndParam));
-											}
-										}
+										GroupLenghts[recordValue.Value.ToString()] += entity.GetDistanceAtParameter(entity.EndParam);
+									}
+									else
+									{
+										GroupLenghts.Add(recordValue.Value.ToString(), entity.GetDistanceAtParameter(entity.EndParam));
 									}
 								}
 							}
@@ -161,7 +155,36 @@ namespace Electro
 				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
 			}
 		}
+
+		/// <summary>
+		/// Возвращает XRecord объекта в режиме для чтения
+		/// </summary>
+		/// <param name="recordKey">Ключ словаря, который должен содержать XRecord</param>
+		/// <param name="objectid">ObjectID объекта, у которого мы получаем XRecord</param>
+		/// <param name="transaction">Используемая транзакция</param>
+		/// <returns>XRecord в режиме ForRead</returns>
+		Xrecord getXrecord(string recordKey, ObjectId objectid, Transaction transaction)
+		{
+			Entity entity = transaction.GetObject(objectid, OpenMode.ForRead) as Entity;
+			if (entity != null)
+			{
+				if (entity.ExtensionDictionary != ObjectId.Null)
+				{
+					using (DBDictionary dict = transaction.GetObject(
+						entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary)
+					{
+						if (dict.Contains(recordKey))
+						{
+							return transaction.GetObject(dict.GetAt(recordKey), OpenMode.ForRead) as Xrecord;
+						}
+					}
+				}
+			}
+			return null;
+		}
 		
+		
+
 //		public ObjectIdCollection GetGroupPrimitives(string groupname, Transaction trans, Document acad, Database CurDb)
 //		{
 //			foreach (SelectedObject selectedObj in selectionSet)
@@ -206,7 +229,7 @@ namespace Electro
 //				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
 //			}
 //		}
-//		
+		
 		[CommandMethod("GetLines")]
 		public void GetLines()
 		{
