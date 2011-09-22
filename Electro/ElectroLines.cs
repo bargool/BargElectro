@@ -104,12 +104,6 @@ namespace BargElectro
 			Dictionary<string, double> GroupLenghts = new Dictionary<string, double>();
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
-				//Спрашиваем имя группы
-//				PromptStringOptions pStringOptions = new PromptStringOptions("\nВведите наименование группы: ");
-//				pStringOptions.AllowSpaces = false;
-//				pStringOptions.DefaultValue = "Гр.1";
-//				PromptResult pStringResult = acadDocument.Editor.GetString(pStringOptions);
-//				string GroupName = pStringResult.StringResult; //Имя группы
 				//Выделять будем только линии и полилинии. Создаем фильтр
 				TypedValue[] acadFilterValues = new TypedValue[4];
 				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
@@ -125,7 +119,6 @@ namespace BargElectro
 					if (selectedObj != null)
 					{
 						Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
-						
 						if (entity!=null)
 						{
 							Xrecord record = getXrecord(AppRecordKey, selectedObj.ObjectId, acadTrans);
@@ -183,52 +176,49 @@ namespace BargElectro
 			return null;
 		}
 		
+		[CommandMethod("SelectGroup")]
+		public void SelectGroup()
+		{
+			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
+			{
+				SelectionSet selectionSet = SelectionSet.FromObjectIds(FindGroupPrimitives("Гр.1", transaction).ToArray);
+				PromptSelectionResult res
+			}
+		}
 		
+		/// <summary>
+		/// Ищет примитивы, принадлежащие группе
+		/// </summary>
+		/// <param name="groupname">Имя группы</param>
+		/// <param name="transaction">Транзакция</param>
+		/// <returns>Список ObjectID с XRecord, содержащей groupname</returns>
+		List<ObjectId> FindGroupPrimitives(string groupname, Transaction transaction)
+		{
+			BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(acadCurDb.CurrentSpaceId, OpenMode.ForRead);
+			var entities = from ObjectId entity in btr
+				where transaction.GetObject(entity, OpenMode.ForRead) is Entity
+				select entity;
+			List<ObjectId> group = new List<ObjectId>();
+			foreach (ObjectId objectid in entities)
+			{
+				Xrecord xrecord = getXrecord(AppRecordKey, objectid, transaction);
+				if (xrecord != null)
+				{
+					ResultBuffer buffer = xrecord.Data;
+					foreach (TypedValue recordValue in buffer)
+					{
+						if (recordValue.Value.ToString() == groupname)
+						{
+							group.Add(objectid);
+							break;
+						}
+					}
+				}
+			}
+			return group;
+		}
 
-//		public ObjectIdCollection GetGroupPrimitives(string groupname, Transaction trans, Document acad, Database CurDb)
-//		{
-//			foreach (SelectedObject selectedObj in selectionSet)
-//			{
-//				if (selectedObj != null)
-//				{
-//					Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
-//					if (entity!=null)
-//					{
-//						if (entity.ExtensionDictionary!=ObjectId.Null)
-//						{
-//							using (DBDictionary dict = acadTrans.GetObject(
-//								entity.ExtensionDictionary, OpenMode.ForRead, false) as DBDictionary)
-//							{
-//								if (dict.Contains(AppRecordKey))
-//								{
-//									//Получаем XRecord
-//									Xrecord xrecord = acadTrans.GetObject(
-//										dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
-//									ResultBuffer buffer = xrecord.Data;
-//									//Проходим по каждому значению в XRecord
-//									foreach (TypedValue recordValue in buffer)
-//									{
-//										//Проверяем, была ли у нас такая группа?
-//										if (GroupLenghts.ContainsKey(recordValue.Value.ToString()))
-//										{
-//											GroupLenghts[recordValue.Value.ToString()] += entity.GetDistanceAtParameter(entity.EndParam);
-//										}
-//										else
-//										{
-//											GroupLenghts.Add(recordValue.Value.ToString(), entity.GetDistanceAtParameter(entity.EndParam));
-//										}
-//									}
-//								}
-//							}
-//						}
-//					}
-//				}
-//			}
-//			foreach (KeyValuePair<string, double> kvp in GroupLenghts)
-//			{
-//				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
-//			}
-//		}
+
 		
 		[CommandMethod("GetLines")]
 		public void GetLines()
