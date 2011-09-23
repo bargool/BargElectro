@@ -37,56 +37,59 @@ namespace BargElectro
 				pStringOptions.AllowSpaces = false;
 				pStringOptions.DefaultValue = "Гр.1";
 				PromptResult pStringResult = acadDocument.Editor.GetString(pStringOptions);
-				string GroupName = pStringResult.StringResult; //Имя группы
-				PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
-				acadSelectionOptions.MessageForAdding = "\nУкажите объекты группы";
-				//Выделять будем только линии и полилинии. Создаем фильтр
-				TypedValue[] acadFilterValues = new TypedValue[4];
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LINE"),1);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),2);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "OR>"),3);
-				SelectionFilter acadSelFilter = new SelectionFilter(acadFilterValues);
-				//Используем фильтр для выделения
-				PromptSelectionResult acadSelSetPrompt = acadDocument.Editor.GetSelection(acadSelectionOptions, acadSelFilter);
-				//Если выбраны объекты - едем дальше
-				if (acadSelSetPrompt.Status == PromptStatus.OK)
+				if (pStringResult.Status == PromptStatus.OK)
 				{
-					SelectionSet acadSelectedObjects = acadSelSetPrompt.Value;
-					foreach (SelectedObject selectedObj in acadSelectedObjects)
+					string GroupName = pStringResult.StringResult; //Имя группы
+					PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
+					acadSelectionOptions.MessageForAdding = "\nУкажите объекты группы";
+					//Выделять будем только линии и полилинии. Создаем фильтр
+					TypedValue[] acadFilterValues = new TypedValue[4];
+					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
+					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LINE"),1);
+					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),2);
+					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "OR>"),3);
+					SelectionFilter acadSelFilter = new SelectionFilter(acadFilterValues);
+					//Используем фильтр для выделения
+					PromptSelectionResult acadSelSetPrompt = acadDocument.Editor.GetSelection(acadSelectionOptions, acadSelFilter);
+					//Если выбраны объекты - едем дальше
+					if (acadSelSetPrompt.Status == PromptStatus.OK)
 					{
-						if (selectedObj!=null)
+						SelectionSet acadSelectedObjects = acadSelSetPrompt.Value;
+						foreach (SelectedObject selectedObj in acadSelectedObjects)
 						{
-							Entity entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForWrite) as Entity;
-							if (entity!=null)
+							if (selectedObj!=null)
 							{
-								TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
-								ResultBuffer buffer = new ResultBuffer(data);
-								
-								if (entity.ExtensionDictionary==ObjectId.Null)
+								Entity entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForWrite) as Entity;
+								if (entity!=null)
 								{
-									entity.CreateExtensionDictionary();
-								}
-								using (DBDictionary dict = acadTrans.GetObject(
-									entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
-								{
-									if (dict.Contains(AppRecordKey))
+									TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
+									ResultBuffer buffer = new ResultBuffer(data);
+									
+									if (entity.ExtensionDictionary==ObjectId.Null)
 									{
-										Xrecord xrecord = acadTrans.GetObject(
-											dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
-										if (!xrecord.Data.AsArray().Contains(data))
-										{
-											buffer = xrecord.Data;
-											buffer.Add(data);
-											xrecord.Data = buffer;
-										}
+										entity.CreateExtensionDictionary();
 									}
-									else
+									using (DBDictionary dict = acadTrans.GetObject(
+										entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
 									{
-										Xrecord xrecord = new Xrecord();
-										xrecord.Data = buffer;
-										dict.SetAt(AppRecordKey, xrecord);
-										acadTrans.AddNewlyCreatedDBObject(xrecord, true);
+										if (dict.Contains(AppRecordKey))
+										{
+											Xrecord xrecord = acadTrans.GetObject(
+												dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
+											if (!xrecord.Data.AsArray().Contains(data))
+											{
+												buffer = xrecord.Data;
+												buffer.Add(data);
+												xrecord.Data = buffer;
+											}
+										}
+										else
+										{
+											Xrecord xrecord = new Xrecord();
+											xrecord.Data = buffer;
+											dict.SetAt(AppRecordKey, xrecord);
+											acadTrans.AddNewlyCreatedDBObject(xrecord, true);
+										}
 									}
 								}
 							}
@@ -179,10 +182,11 @@ namespace BargElectro
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
 		{
+			
 			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
 			{
-				SelectionSet selectionSet = SelectionSet.FromObjectIds(FindGroupPrimitives("Гр.1", transaction).ToArray);
-				PromptSelectionResult res
+				Editor ed = acadDocument.Editor;
+				ed.SetImpliedSelection(FindGroupPrimitives("Гр.1", transaction).ToArray());
 			}
 		}
 		
@@ -218,25 +222,55 @@ namespace BargElectro
 			return group;
 		}
 
-
-		
-		[CommandMethod("GetLines")]
-		public void GetLines()
+		/// <summary>
+		/// В текущем пространстве чертежа ищет примитивы, содержащие XRecord с указанием группы
+		/// </summary>
+		/// <returns>Список групп</returns>
+		List<string> FindGroups()
 		{
-			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
-			Database acadCurDb = acadDocument.Database;
-			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
+			List<string> groups = new List<string>();
+			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
 			{
-				BlockTable blockTable = acadTrans.GetObject(acadCurDb.BlockTableId, OpenMode.ForRead) as BlockTable;
-				BlockTableRecord blockTableRecord = acadTrans.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForRead) as BlockTableRecord;
-								
-				var lines = from ObjectId line in blockTableRecord where acadTrans.GetObject(line, OpenMode.ForRead) is Line select (Line)acadTrans.GetObject(line, OpenMode.ForRead);
-
-				foreach (Line line in lines)
+				BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(acadCurDb.CurrentSpaceId, OpenMode.ForRead);
+				var entities = from ObjectId entity in btr 
+					where transaction.GetObject(entity, OpenMode.ForRead) is Entity 
+					select entity;
+				Xrecord record = getXrecord(AppRecordKey, selectedObj.ObjectId, acadTrans);
+				if (record != null)
 				{
-					acadDocument.Editor.WriteMessage("\nДлина: {0}", line.Length);
+					ResultBuffer buffer = record.Data;
+					//Проходим по каждому значению в XRecord
+					foreach (TypedValue recordValue in buffer)
+					{
+						//Проверяем, была ли у нас такая группа?
+						if (!groups.Contains(recordValue.Value.ToString()))
+						{
+							groups.Add(recordValue.Value.ToString());
+						}
+					}
 				}
 			}
+			return groups;
 		}
+
+		
+//		[CommandMethod("GetLines")]
+//		public void GetLines()
+//		{
+//			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
+//			Database acadCurDb = acadDocument.Database;
+//			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
+//			{
+//				BlockTable blockTable = acadTrans.GetObject(acadCurDb.BlockTableId, OpenMode.ForRead) as BlockTable;
+//				BlockTableRecord blockTableRecord = acadTrans.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForRead) as BlockTableRecord;
+//								
+//				var lines = from ObjectId line in blockTableRecord where acadTrans.GetObject(line, OpenMode.ForRead) is Line select (Line)acadTrans.GetObject(line, OpenMode.ForRead);
+//
+//				foreach (Line line in lines)
+//				{
+//					acadDocument.Editor.WriteMessage("\nДлина: {0}", line.Length);
+//				}
+//			}
+//		}
 	}
 }
