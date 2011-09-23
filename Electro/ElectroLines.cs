@@ -30,6 +30,13 @@ namespace BargElectro
 		[CommandMethod("AddLinesToGroup")]
 		public void AddLinesToGroup()
 		{
+			Editor editor = acadDocument.Editor;
+//			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
+			string GroupName = AskForNewGroup(FindGroups().Keys.ToList());
+			if (group != null)
+			{
+				editor.SetImpliedSelection(groups[group].ToArray());
+			}
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
 				//Спрашиваем имя группы
@@ -182,95 +189,80 @@ namespace BargElectro
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
 		{
-			
-			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
+			Editor editor = acadDocument.Editor;
+			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
+			string group = AskForExistingGroup(groups.Keys.ToList());
+			if (group != null)
 			{
-				Editor ed = acadDocument.Editor;
-				ed.SetImpliedSelection(FindGroupPrimitives("Гр.1", transaction).ToArray());
+				editor.SetImpliedSelection(groups[group].ToArray());
 			}
 		}
 		
-		/// <summary>
-		/// Ищет примитивы, принадлежащие группе
-		/// </summary>
-		/// <param name="groupname">Имя группы</param>
-		/// <param name="transaction">Транзакция</param>
-		/// <returns>Список ObjectID с XRecord, содержащей groupname</returns>
-		List<ObjectId> FindGroupPrimitives(string groupname, Transaction transaction)
+		string AskForExistingGroup(List<string> groups)
 		{
-			BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(acadCurDb.CurrentSpaceId, OpenMode.ForRead);
-			var entities = from ObjectId entity in btr
-				where transaction.GetObject(entity, OpenMode.ForRead) is Entity
-				select entity;
-			List<ObjectId> group = new List<ObjectId>();
-			foreach (ObjectId objectid in entities)
+			PromptKeywordOptions prmptKeywordOpt = new PromptKeywordOptions("\nВыберите группу: ");
+			foreach (string group in groups)
 			{
-				Xrecord xrecord = getXrecord(AppRecordKey, objectid, transaction);
-				if (xrecord != null)
-				{
-					ResultBuffer buffer = xrecord.Data;
-					foreach (TypedValue recordValue in buffer)
-					{
-						if (recordValue.Value.ToString() == groupname)
-						{
-							group.Add(objectid);
-							break;
-						}
-					}
-				}
+				prmptKeywordOpt.Keywords.Add(group);
 			}
-			return group;
+			prmptKeywordOpt.AllowNone=false;
+			prmptKeywordOpt.AllowArbitraryInput = true;
+			PromptResult result = acadDocument.Editor.GetKeywords(prmptKeywordOpt);
+			if (result.Status == PromptStatus.OK)
+			{
+				return result.StringResult;
+			}
+			else
+			{
+				return null;
+			}
 		}
-
-		/// <summary>
-		/// В текущем пространстве чертежа ищет примитивы, содержащие XRecord с указанием группы
-		/// </summary>
-		/// <returns>Список групп</returns>
-		List<string> FindGroups()
+		string AskForNewGroup(List<string> groups)
 		{
-			List<string> groups = new List<string>();
+			PromptStringOptions pStringOptions = new PromptStringOptions("\nВведите наименование группы: ");
+			pStringOptions.AllowSpaces = false;
+			foreach (string group in groups)
+			{
+				pStringOptions.Keywords.Add(group);
+			}
+			pStringOptions.DefaultValue = "Гр.1";
+			PromptResult pStringResult = acadDocument.Editor.GetString(pStringOptions);
+			if (pStringResult.Status == PromptStatus.OK) return pStringResult.StringResult;
+			else return null;
+		}
+		
+		SortedDictionary<string, List<ObjectId>> FindGroups()
+		{
+			SortedDictionary<string, List<ObjectId>> groups = new SortedDictionary<string, List<ObjectId>>();
 			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
 			{
 				BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(acadCurDb.CurrentSpaceId, OpenMode.ForRead);
 				var entities = from ObjectId entity in btr 
 					where transaction.GetObject(entity, OpenMode.ForRead) is Entity 
 					select entity;
-				Xrecord record = getXrecord(AppRecordKey, selectedObj.ObjectId, acadTrans);
-				if (record != null)
+				foreach (ObjectId entity in entities)
 				{
-					ResultBuffer buffer = record.Data;
-					//Проходим по каждому значению в XRecord
-					foreach (TypedValue recordValue in buffer)
+					Xrecord record = getXrecord(AppRecordKey, entity, transaction);
+					if (record != null)
 					{
-						//Проверяем, была ли у нас такая группа?
-						if (!groups.Contains(recordValue.Value.ToString()))
+						ResultBuffer buffer = record.Data;
+						//Проходим по каждому значению в XRecord
+						foreach (TypedValue recordValue in buffer)
 						{
-							groups.Add(recordValue.Value.ToString());
+							//Проверяем, была ли у нас такая группа?
+							if (groups.ContainsKey(recordValue.Value.ToString()))
+							{
+								groups[recordValue.Value.ToString()].Add(entity);
+							}
+							else
+							{
+								groups.Add(recordValue.Value.ToString(), new List<ObjectId>(){entity});
+							}
 						}
 					}
 				}
 			}
 			return groups;
 		}
-
-		
-//		[CommandMethod("GetLines")]
-//		public void GetLines()
-//		{
-//			Document acadDocument = Application.DocumentManager.MdiActiveDocument;
-//			Database acadCurDb = acadDocument.Database;
-//			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
-//			{
-//				BlockTable blockTable = acadTrans.GetObject(acadCurDb.BlockTableId, OpenMode.ForRead) as BlockTable;
-//				BlockTableRecord blockTableRecord = acadTrans.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForRead) as BlockTableRecord;
-//								
-//				var lines = from ObjectId line in blockTableRecord where acadTrans.GetObject(line, OpenMode.ForRead) is Line select (Line)acadTrans.GetObject(line, OpenMode.ForRead);
-//
-//				foreach (Line line in lines)
-//				{
-//					acadDocument.Editor.WriteMessage("\nДлина: {0}", line.Length);
-//				}
-//			}
-//		}
 	}
 }
