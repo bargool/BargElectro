@@ -17,6 +17,7 @@ namespace BargElectro
 {
 	public class ElectroLines
 	{
+		//TODO: Добавить возможность клика по линии с целью узнать, к каким линиям принадлежит
 		const string AppRecordKey = "BargElectroLinesGroup";
 		Document acadDocument;
 		Database acadCurDb;
@@ -31,24 +32,13 @@ namespace BargElectro
 		public void AddLinesToGroup()
 		{
 			Editor editor = acadDocument.Editor;
-//			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
-			string GroupName = AskForNewGroup(FindGroups().Keys.ToList());
-			if (group != null)
+			string GroupName = AskForGroup(false, FindGroups().Keys.ToList());
+			if (GroupName != null)
 			{
-				editor.SetImpliedSelection(groups[group].ToArray());
-			}
-			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
-			{
-				//Спрашиваем имя группы
-				PromptStringOptions pStringOptions = new PromptStringOptions("\nВведите наименование группы: ");
-				pStringOptions.AllowSpaces = false;
-				pStringOptions.DefaultValue = "Гр.1";
-				PromptResult pStringResult = acadDocument.Editor.GetString(pStringOptions);
-				if (pStringResult.Status == PromptStatus.OK)
+				using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 				{
-					string GroupName = pStringResult.StringResult; //Имя группы
 					PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
-					acadSelectionOptions.MessageForAdding = "\nУкажите объекты группы";
+					acadSelectionOptions.MessageForAdding = "\nУкажите объекты группы " + GroupName;
 					//Выделять будем только линии и полилинии. Создаем фильтр
 					TypedValue[] acadFilterValues = new TypedValue[4];
 					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
@@ -102,14 +92,15 @@ namespace BargElectro
 							}
 						}
 					}
+					acadTrans.Commit();
 				}
-				acadTrans.Commit();
 			}
 		}
 		
 		[CommandMethod("GetLinesroup")]
 		public void GetLinesGroup()
 		{
+			//TODO: Переделать для итерации по базе и использования FindGroups!!
 			//Dictionary, в котором будут храниться номера групп и длины
 			Dictionary<string, double> GroupLenghts = new Dictionary<string, double>();
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
@@ -191,44 +182,52 @@ namespace BargElectro
 		{
 			Editor editor = acadDocument.Editor;
 			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
-			string group = AskForExistingGroup(groups.Keys.ToList());
+			string group = AskForGroup(true, groups.Keys.ToList());
 			if (group != null)
 			{
 				editor.SetImpliedSelection(groups[group].ToArray());
 			}
 		}
 		
-		string AskForExistingGroup(List<string> groups)
+		string AskForGroup(bool existing, List<string> groups)
 		{
 			PromptKeywordOptions prmptKeywordOpt = new PromptKeywordOptions("\nВыберите группу: ");
 			foreach (string group in groups)
 			{
 				prmptKeywordOpt.Keywords.Add(group);
 			}
-			prmptKeywordOpt.AllowNone=false;
-			prmptKeywordOpt.AllowArbitraryInput = true;
+			prmptKeywordOpt.AllowNone = false;
+			if (groups.Count == 0)
+			{
+				prmptKeywordOpt.Keywords.Add("Гр.1");
+			}
+			else
+			{
+				prmptKeywordOpt.Keywords.Default = groups[0];
+			}
+			if (existing)
+			{
+				prmptKeywordOpt.AllowArbitraryInput = false;
+			}
+			else
+			{
+				prmptKeywordOpt.Message = "\nВведите наименование группы: ";
+				prmptKeywordOpt.AllowArbitraryInput = true;
+			}
 			PromptResult result = acadDocument.Editor.GetKeywords(prmptKeywordOpt);
 			if (result.Status == PromptStatus.OK)
 			{
+				if (result.StringResult == "")
+				{
+					acadDocument.Editor.WriteMessage("\nНеобходимо ввести наименование группы!");
+					return null;
+				}
 				return result.StringResult;
 			}
 			else
 			{
 				return null;
 			}
-		}
-		string AskForNewGroup(List<string> groups)
-		{
-			PromptStringOptions pStringOptions = new PromptStringOptions("\nВведите наименование группы: ");
-			pStringOptions.AllowSpaces = false;
-			foreach (string group in groups)
-			{
-				pStringOptions.Keywords.Add(group);
-			}
-			pStringOptions.DefaultValue = "Гр.1";
-			PromptResult pStringResult = acadDocument.Editor.GetString(pStringOptions);
-			if (pStringResult.Status == PromptStatus.OK) return pStringResult.StringResult;
-			else return null;
 		}
 		
 		SortedDictionary<string, List<ObjectId>> FindGroups()
