@@ -28,15 +28,20 @@ namespace BargElectro
 			acadCurDb = acadDocument.Database;
 		}
 		
+		/// <summary>
+		/// Метод добавляет к линейным примитивам XRecord с именем группы
+		/// </summary>
 		[CommandMethod("AddLinesToGroup")]
 		public void AddLinesToGroup()
 		{
 			Editor editor = acadDocument.Editor;
+			//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
 			string GroupName = AskForGroup(false, FindGroups().Keys.ToList());
 			if (GroupName != null)
 			{
 				using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 				{
+					// Готовим опции для запроса элементов группы
 					PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
 					acadSelectionOptions.MessageForAdding = "\nУкажите объекты группы " + GroupName;
 					//Выделять будем только линии и полилинии. Создаем фильтр
@@ -51,7 +56,9 @@ namespace BargElectro
 					//Если выбраны объекты - едем дальше
 					if (acadSelSetPrompt.Status == PromptStatus.OK)
 					{
+						// Формируем коллекцию выделенных объектов
 						SelectionSet acadSelectedObjects = acadSelSetPrompt.Value;
+						// Проходим по каждому объекту в выделении
 						foreach (SelectedObject selectedObj in acadSelectedObjects)
 						{
 							if (selectedObj!=null)
@@ -59,9 +66,7 @@ namespace BargElectro
 								Entity entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForWrite) as Entity;
 								if (entity!=null)
 								{
-									TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
-									ResultBuffer buffer = new ResultBuffer(data);
-									
+									// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
 									if (entity.ExtensionDictionary==ObjectId.Null)
 									{
 										entity.CreateExtensionDictionary();
@@ -69,6 +74,10 @@ namespace BargElectro
 									using (DBDictionary dict = acadTrans.GetObject(
 										entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
 									{
+										//Готовим данные с именем группы для записи в XRecord
+										TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
+										ResultBuffer buffer = new ResultBuffer(data);
+										//Проверяем, есть ли словарь, закреплённый (мной) за плагином
 										if (dict.Contains(AppRecordKey))
 										{
 											Xrecord xrecord = acadTrans.GetObject(
@@ -100,44 +109,28 @@ namespace BargElectro
 		[CommandMethod("GetLinesroup")]
 		public void GetLinesGroup()
 		{
-			//TODO: Переделать для итерации по базе и использования FindGroups!!
-			//Dictionary, в котором будут храниться номера групп и длины
-			Dictionary<string, double> GroupLenghts = new Dictionary<string, double>();
+			//SortedDictionary, в котором будут храниться номера групп и длины
+			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
+			
+			SortedDictionary<string, List<ObjectId>> Groups = FindGroups();
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
-				//Выделять будем только линии и полилинии. Создаем фильтр
-				TypedValue[] acadFilterValues = new TypedValue[4];
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "<OR"),0);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LINE"),1);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),2);
-				acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "OR>"),3);
-				SelectionFilter acadSelFilter = new SelectionFilter(acadFilterValues);
-				//Выделяем ВСЕ линии и полилинии на незамороженных слоях
-				SelectionSet selectionSet = acadDocument.Editor.SelectAll(acadSelFilter).Value;
-				//Проходим по получившемуся выделению
-				foreach (SelectedObject selectedObj in selectionSet)
+				foreach (KeyValuePair<string, List<ObjectId>> kvp in Groups)
 				{
-					if (selectedObj != null)
+					foreach (ObjectId objectid in kvp.Value)
 					{
-						Curve entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as Curve;
-						if (entity!=null)
+						if (objectid != null)
 						{
-							Xrecord record = getXrecord(AppRecordKey, selectedObj.ObjectId, acadTrans);
-							if (record != null)
+							Curve entity = acadTrans.GetObject(objectid, OpenMode.ForRead) as Curve;
+							if (entity!=null)
 							{
-								ResultBuffer buffer = record.Data;
-								//Проходим по каждому значению в XRecord
-								foreach (TypedValue recordValue in buffer)
+								if (GroupLenghts.ContainsKey(kvp.Key))
 								{
-									//Проверяем, была ли у нас такая группа?
-									if (GroupLenghts.ContainsKey(recordValue.Value.ToString()))
-									{
-										GroupLenghts[recordValue.Value.ToString()] += entity.GetDistanceAtParameter(entity.EndParam);
-									}
-									else
-									{
-										GroupLenghts.Add(recordValue.Value.ToString(), entity.GetDistanceAtParameter(entity.EndParam));
-									}
+									GroupLenghts[kvp.Key] += entity.GetDistanceAtParameter(entity.EndParam);
+								}
+								else
+								{
+									GroupLenghts.Add(kvp.Key, entity.GetDistanceAtParameter(entity.EndParam));
 								}
 							}
 						}
@@ -151,7 +144,7 @@ namespace BargElectro
 		}
 
 		/// <summary>
-		/// Возвращает XRecord объекта в режиме для чтения
+		/// Возвращает XRecord в словаре recordKey объекта в режиме для чтения
 		/// </summary>
 		/// <param name="recordKey">Ключ словаря, который должен содержать XRecord</param>
 		/// <param name="objectid">ObjectID объекта, у которого мы получаем XRecord</param>
