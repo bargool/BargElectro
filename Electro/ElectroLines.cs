@@ -77,9 +77,11 @@ namespace BargElectro
 										//Готовим данные с именем группы для записи в XRecord
 										TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
 										ResultBuffer buffer = new ResultBuffer(data);
-										//Проверяем, есть ли словарь, закреплённый (мной) за плагином
+										//Проверяем, есть ли запись словаря, закреплённая (мной) за плагином
 										if (dict.Contains(AppRecordKey))
 										{
+											// Если запись уже есть - получаем XRecord, и добавляем туда новую группу
+											// (проверяем, естественно, вдруг такая уже есть)
 											Xrecord xrecord = acadTrans.GetObject(
 												dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
 											if (!xrecord.Data.AsArray().Contains(data))
@@ -91,6 +93,7 @@ namespace BargElectro
 										}
 										else
 										{
+											// Словаря нет - создаем запись словаря и XRecord
 											Xrecord xrecord = new Xrecord();
 											xrecord.Data = buffer;
 											dict.SetAt(AppRecordKey, xrecord);
@@ -106,15 +109,19 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Команда выводит список групп и суммарную длину в плане
+		/// </summary>
 		[CommandMethod("GetLinesroup")]
 		public void GetLinesGroup()
 		{
 			//SortedDictionary, в котором будут храниться номера групп и длины
 			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
-			
+			// Словарь для хранения групп и примитивов, принадлежащих им
 			SortedDictionary<string, List<ObjectId>> Groups = FindGroups();
 			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
 			{
+				// Итерируем по группам и объектам групп, получаем длины объектов и записываем в словарь длин
 				foreach (KeyValuePair<string, List<ObjectId>> kvp in Groups)
 				{
 					foreach (ObjectId objectid in kvp.Value)
@@ -137,6 +144,7 @@ namespace BargElectro
 					}
 				}
 			}
+			// Выводим на консоль список длин с их суммарными длинами
 			foreach (KeyValuePair<string, double> kvp in GroupLenghts)
 			{
 				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
@@ -152,11 +160,14 @@ namespace BargElectro
 		/// <returns>XRecord в режиме ForRead</returns>
 		Xrecord getXrecord(string recordKey, ObjectId objectid, Transaction transaction)
 		{
+			// Получаем входной объект как Entity
 			Entity entity = transaction.GetObject(objectid, OpenMode.ForRead) as Entity;
 			if (entity != null)
 			{
+				// Проверяем, есть ли словарь у объекта
 				if (entity.ExtensionDictionary != ObjectId.Null)
 				{
+					// 
 					using (DBDictionary dict = transaction.GetObject(
 						entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary)
 					{
@@ -182,6 +193,12 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Метод выводит запрос на имя группы, существующие группы выводятся в качетсве ключевых слов
+		/// </summary>
+		/// <param name="existing">запрос существующей группы, или новой</param>
+		/// <param name="groups">список существующих групп</param>
+		/// <returns>имя введённой группы</returns>
 		string AskForGroup(bool existing, List<string> groups)
 		{
 			PromptKeywordOptions prmptKeywordOpt = new PromptKeywordOptions("\nВыберите группу: ");
@@ -223,6 +240,10 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Метод ищет по всем объектам чертежа информацию по группам
+		/// </summary>
+		/// <returns>Сортированный словарь, содержащий список групп, и списки ObjectId, относящихся к ним объектов</returns>
 		SortedDictionary<string, List<ObjectId>> FindGroups()
 		{
 			SortedDictionary<string, List<ObjectId>> groups = new SortedDictionary<string, List<ObjectId>>();
@@ -255,6 +276,49 @@ namespace BargElectro
 				}
 			}
 			return groups;
+		}
+		
+		List<string> GetPrimitivesGroups(Xrecord xrecord)
+		{
+			List<string> groups = new List<string>();
+			if (xrecord != null)
+			{
+				ResultBuffer buffer = record.Data;
+				//Проходим по каждому значению в XRecord
+				foreach (TypedValue recordValue in buffer)
+				{
+					//Проверяем, была ли у нас такая группа?
+					if (groups.ContainsKey(recordValue.Value.ToString()))
+					{
+						groups[recordValue.Value.ToString()].Add(entity);
+					}
+					else
+					{
+						groups.Add(recordValue.Value.ToString(), new List<ObjectId>(){entity});
+					}
+				}
+			}
+		}
+		
+		[CommandMethod("DeleteGroupLine", CommandFlags.UsePickSet)]
+		public void DeleteGroupLine()
+		{
+			Editor editor = acadDocument.Editor;
+			PromptSelectionResult selectionResult = editor.SelectImplied();
+			SelectionSet selectionSet;
+			List<string> groups = new List<string>();
+			
+			
+			string group = AskForGroup(true, );
+			
+			if (selectionResult.Status == PromptStatus.OK)
+			{
+				selectionSet = selectionResult.Value;
+			}
+			else
+			{
+				
+			}
 		}
 	}
 }
