@@ -14,15 +14,24 @@ using Autodesk.AutoCAD.DatabaseServices;
 namespace BargElectro
 {
 	/// <summary>
-	/// Description of GroupObject.
+	/// Класс представляет собой абстракцию для работы с примитивом, содержащим информацию по группам
 	/// </summary>
 	public class GroupObject
 	{
 		const string AppRecordKey = "BargElectroLinesGroup";
 		List<string> GroupList; //Список групп, к которым принадлежит объект
-		public ObjectId objectid {get; set;} //ObjectId объекта entity, а не xrecord
+		ObjectId id; //ObjectId объекта entity, а не xrecord
+		public ObjectId objectid
+		{
+			get {return id;}
+		}
 		Transaction transaction;
 		
+		bool hasGroup;
+		public bool HasGroup
+		{
+			get {return hasGroup;}
+		}
 		public GroupObject()
 		{
 			throw new ArgumentNullException("ObjectId and Transaction have to be as argument");
@@ -30,19 +39,16 @@ namespace BargElectro
 		
 		public GroupObject(ObjectId id, Transaction trans)
 		{
-			this.objectid = id;
+			this.id = id;
 			this.transaction = trans;
 			GroupList = ReadGroups();
-			if (GroupList == null)
-			{
-				GroupList = new List<string>();
-			}
+			hasGroup = GroupList != null;
 		}
 		
 		private List<string> ReadGroups()
 		{
 			List<string> groups = new List<string>();
-			Entity entity = transaction.GetObject(objectid, OpenMode.ForRead) as Entity;
+			Entity entity = transaction.GetObject(id, OpenMode.ForRead) as Entity;
 			if (entity != null)
 			{
 				// Проверяем, есть ли словарь у объекта
@@ -72,7 +78,7 @@ namespace BargElectro
 		
 		public void WriteGroups()
 		{
-			Entity entity = transaction.GetObject(objectid, OpenMode.ForWrite) as Entity;
+			Entity entity = transaction.GetObject(id, OpenMode.ForWrite) as Entity;
 			if (entity!=null)
 			{
 				// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
@@ -116,9 +122,19 @@ namespace BargElectro
 		
 		public void AddGroup(string group)
 		{
-			if ((group != null)&&(!GroupList.Contains(group)))
+			if (group == null) return;
+			if (hasGroup)
 			{
+				if (!GroupList.Contains(group))
+				{
+					GroupList.Add(group);
+				}
+			}
+			else
+			{
+				GroupList = new List<string>();
 				GroupList.Add(group);
+				hasGroup = true;
 			}
 		}
 		
@@ -127,6 +143,7 @@ namespace BargElectro
 			if ((group != null)&&(GroupList.Contains(group)))
 			{
 				GroupList.Remove(group);
+				hasGroup = GroupList.Count != 0;
 			}
 		}
 		

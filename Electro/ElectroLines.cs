@@ -329,5 +329,29 @@ namespace BargElectro
 				}
 			}
 		}
+		
+		[CommandMethod("Proba")]
+		public void Proba()
+		{
+			Editor editor = dwg.Editor;
+			PromptSelectionResult result = editor.GetSelection();
+			if (result.Status == PromptStatus.OK)
+			{
+				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
+				{
+					SelectionSet selset = result.Value;
+					List<GroupObject> groupObject = new List<GroupObject>();
+					foreach (SelectedObject selObj in selset)
+					{
+						groupObject.Add(new GroupObject(selObj.ObjectId, transaction, "Гр.1"));
+					}
+					foreach (GroupObject grOb in groupObject)
+					{
+						editor.WriteMessage("\nВыделенный объект принадлежит группам {0}", grOb.GetGroups()[0]);
+						grOb.WriteGroups();
+					}
+				}
+			}
+		}
 	}
 }
