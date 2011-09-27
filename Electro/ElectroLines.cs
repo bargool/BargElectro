@@ -278,26 +278,23 @@ namespace BargElectro
 			return groups;
 		}
 		
-		List<string> GetPrimitivesGroups(Xrecord xrecord)
+		List<string> GetPrimitiveGroups(Xrecord xrecord)
 		{
 			List<string> groups = new List<string>();
 			if (xrecord != null)
 			{
-				ResultBuffer buffer = record.Data;
+				ResultBuffer buffer = xrecord.Data;
 				//Проходим по каждому значению в XRecord
 				foreach (TypedValue recordValue in buffer)
 				{
 					//Проверяем, была ли у нас такая группа?
-					if (groups.ContainsKey(recordValue.Value.ToString()))
+					if (!groups.Contains(recordValue.Value.ToString()))
 					{
-						groups[recordValue.Value.ToString()].Add(entity);
-					}
-					else
-					{
-						groups.Add(recordValue.Value.ToString(), new List<ObjectId>(){entity});
+						groups.Add(recordValue.Value.ToString());
 					}
 				}
 			}
+			return groups;
 		}
 		
 		[CommandMethod("DeleteGroupLine", CommandFlags.UsePickSet)]
@@ -305,19 +302,30 @@ namespace BargElectro
 		{
 			Editor editor = acadDocument.Editor;
 			PromptSelectionResult selectionResult = editor.SelectImplied();
-			SelectionSet selectionSet;
-			List<string> groups = new List<string>();
-			
-			
-			string group = AskForGroup(true, );
-			
+			List<string> groupList = new List<string>();
+			if (selectionResult.Status != PromptStatus.OK)
+			{
+				PromptSelectionOptions selectionOptions = new PromptSelectionOptions();
+				selectionOptions.MessageForAdding = "\nУкажите объекты";
+				selectionResult = editor.GetSelection(selectionOptions);
+			}
 			if (selectionResult.Status == PromptStatus.OK)
 			{
-				selectionSet = selectionResult.Value;
-			}
-			else
-			{
-				
+				using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
+				{
+					SelectionSet selectionSet = selectionResult.Value;
+					foreach (SelectedObject selectedObject in selectionSet)
+					{
+						foreach (string group in GetPrimitiveGroups(getXrecord(AppRecordKey, selectedObject.ObjectId, transaction)))
+						{
+							if (!groupList.Contains(group))
+							{
+								groupList.Add(group);
+							}
+						}
+					}
+					
+				}
 			}
 		}
 	}
