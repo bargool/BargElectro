@@ -26,7 +26,6 @@ namespace BargElectro
 			get {return id;}
 		}
 		Transaction transaction;
-		
 		bool hasGroup;
 		public bool HasGroup
 		{

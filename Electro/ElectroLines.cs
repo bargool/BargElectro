@@ -343,13 +343,16 @@ namespace BargElectro
 					List<GroupObject> groupObject = new List<GroupObject>();
 					foreach (SelectedObject selObj in selset)
 					{
-						groupObject.Add(new GroupObject(selObj.ObjectId, transaction, "Гр.1"));
+						groupObject.Add(new GroupObject(selObj.ObjectId, transaction));
+						groupObject[groupObject.Count-1].AddGroup("Гр.1");
+						groupObject[groupObject.Count-1].WriteGroups();
 					}
-					foreach (GroupObject grOb in groupObject)
-					{
-						editor.WriteMessage("\nВыделенный объект принадлежит группам {0}", grOb.GetGroups()[0]);
-						grOb.WriteGroups();
-					}
+//					foreach (GroupObject grOb in groupObject)
+//					{
+//						editor.WriteMessage("\nВыделенный объект принадлежит группам {0}", grOb.GetGroups()[0]);
+//						grOb.WriteGroups();
+//					}
+					transaction.Commit();
 				}
 			}
 		}
