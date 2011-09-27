@@ -19,13 +19,13 @@ namespace BargElectro
 	{
 		//TODO: Добавить возможность клика по линии с целью узнать, к каким линиям принадлежит
 		const string AppRecordKey = "BargElectroLinesGroup";
-		Document acadDocument;
-		Database acadCurDb;
+		Document dwg;
+		Database CurrentDatabase;
 		
 		public ElectroLines()
 		{
-			acadDocument = Application.DocumentManager.MdiActiveDocument;
-			acadCurDb = acadDocument.Database;
+			dwg = Application.DocumentManager.MdiActiveDocument;
+			CurrentDatabase = dwg.Database;
 		}
 		
 		/// <summary>
@@ -34,12 +34,12 @@ namespace BargElectro
 		[CommandMethod("AddLinesToGroup")]
 		public void AddLinesToGroup()
 		{
-			Editor editor = acadDocument.Editor;
+			Editor editor = dwg.Editor;
 			//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
 			string GroupName = AskForGroup(false, FindGroups().Keys.ToList());
 			if (GroupName != null)
 			{
-				using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
+				using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 				{
 					// Готовим опции для запроса элементов группы
 					PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
@@ -52,7 +52,7 @@ namespace BargElectro
 					acadFilterValues.SetValue(new TypedValue((int)DxfCode.Operator, "OR>"),3);
 					SelectionFilter acadSelFilter = new SelectionFilter(acadFilterValues);
 					//Используем фильтр для выделения
-					PromptSelectionResult acadSelSetPrompt = acadDocument.Editor.GetSelection(acadSelectionOptions, acadSelFilter);
+					PromptSelectionResult acadSelSetPrompt = dwg.Editor.GetSelection(acadSelectionOptions, acadSelFilter);
 					//Если выбраны объекты - едем дальше
 					if (acadSelSetPrompt.Status == PromptStatus.OK)
 					{
@@ -119,7 +119,7 @@ namespace BargElectro
 			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
 			// Словарь для хранения групп и примитивов, принадлежащих им
 			SortedDictionary<string, List<ObjectId>> Groups = FindGroups();
-			using (Transaction acadTrans = acadCurDb.TransactionManager.StartTransaction())
+			using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				// Итерируем по группам и объектам групп, получаем длины объектов и записываем в словарь длин
 				foreach (KeyValuePair<string, List<ObjectId>> kvp in Groups)
@@ -147,7 +147,7 @@ namespace BargElectro
 			// Выводим на консоль список длин с их суммарными длинами
 			foreach (KeyValuePair<string, double> kvp in GroupLenghts)
 			{
-				acadDocument.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
+				dwg.Editor.WriteMessage("\nГруппа {0}, длина: {1}", kvp.Key, kvp.Value);
 			}
 		}
 
@@ -183,8 +183,9 @@ namespace BargElectro
 		
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
+			// FIXME: проверка на наличие групп в чертеже (падает, если задать несуществующую)
 		{
-			Editor editor = acadDocument.Editor;
+			Editor editor = dwg.Editor;
 			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
 			string group = AskForGroup(true, groups.Keys.ToList());
 			if (group != null)
@@ -224,12 +225,12 @@ namespace BargElectro
 				prmptKeywordOpt.Message = "\nВведите наименование группы: ";
 				prmptKeywordOpt.AllowArbitraryInput = true;
 			}
-			PromptResult result = acadDocument.Editor.GetKeywords(prmptKeywordOpt);
+			PromptResult result = dwg.Editor.GetKeywords(prmptKeywordOpt);
 			if (result.Status == PromptStatus.OK)
 			{
 				if (result.StringResult == "")
 				{
-					acadDocument.Editor.WriteMessage("\nНеобходимо ввести наименование группы!");
+					dwg.Editor.WriteMessage("\nНеобходимо ввести наименование группы!");
 					return null;
 				}
 				return result.StringResult;
@@ -247,9 +248,9 @@ namespace BargElectro
 		SortedDictionary<string, List<ObjectId>> FindGroups()
 		{
 			SortedDictionary<string, List<ObjectId>> groups = new SortedDictionary<string, List<ObjectId>>();
-			using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
+			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 			{
-				BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(acadCurDb.CurrentSpaceId, OpenMode.ForRead);
+				BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(CurrentDatabase.CurrentSpaceId, OpenMode.ForRead);
 				var entities = from ObjectId entity in btr 
 					where transaction.GetObject(entity, OpenMode.ForRead) is Entity 
 					select entity;
@@ -300,7 +301,7 @@ namespace BargElectro
 		[CommandMethod("DeleteGroupLine", CommandFlags.UsePickSet)]
 		public void DeleteGroupLine()
 		{
-			Editor editor = acadDocument.Editor;
+			Editor editor = dwg.Editor;
 			PromptSelectionResult selectionResult = editor.SelectImplied();
 			List<string> groupList = new List<string>();
 			if (selectionResult.Status != PromptStatus.OK)
@@ -311,7 +312,7 @@ namespace BargElectro
 			}
 			if (selectionResult.Status == PromptStatus.OK)
 			{
-				using (Transaction transaction = acadCurDb.TransactionManager.StartTransaction())
+				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 				{
 					SelectionSet selectionSet = selectionResult.Value;
 					foreach (SelectedObject selectedObject in selectionSet)
