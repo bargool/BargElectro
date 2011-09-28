@@ -16,7 +16,7 @@ namespace BargElectro
 	/// <summary>
 	/// Класс представляет собой абстракцию для работы с примитивом, содержащим информацию по группам
 	/// </summary>
-	public class GroupObject
+	public class GroupObject: IEquatable<GroupObject>
 	{
 		const string AppRecordKey = "BargElectroLinesGroup";
 		List<string> GroupList; //Список групп, к которым принадлежит объект
@@ -80,35 +80,51 @@ namespace BargElectro
 			Entity entity = transaction.GetObject(id, OpenMode.ForWrite) as Entity;
 			if (entity!=null)
 			{
-				// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
-				if (entity.ExtensionDictionary==ObjectId.Null)
+				if (hasGroup)
 				{
-					entity.CreateExtensionDictionary();
+					// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
+					if (entity.ExtensionDictionary==ObjectId.Null)
+					{
+						entity.CreateExtensionDictionary();
+					}
+					using (DBDictionary dict = transaction.GetObject(
+						entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
+					{
+						//Готовим данные с именем группы для записи в XRecord
+						ResultBuffer buffer = new ResultBuffer();
+						foreach (string group in GroupList)
+						{
+							buffer.Add(new TypedValue((int)DxfCode.Text, group));
+						}
+						//Проверяем, есть ли запись словаря, закреплённая (мной) за плагином
+						if (dict.Contains(AppRecordKey))
+						{
+							// Если запись уже есть - получаем XRecord, и перезаписываем группы
+							Xrecord xrecord = transaction.GetObject(
+								dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
+							xrecord.Data = buffer;
+						}
+						else
+						{
+							// Словаря нет - создаем запись словаря и XRecord
+							Xrecord xrecord = new Xrecord();
+							xrecord.Data = buffer;
+							dict.SetAt(AppRecordKey, xrecord);
+							transaction.AddNewlyCreatedDBObject(xrecord, true);
+						}
+					}
 				}
-				using (DBDictionary dict = transaction.GetObject(
-					entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
+				else
 				{
-					//Готовим данные с именем группы для записи в XRecord
-					ResultBuffer buffer = new ResultBuffer();
-					foreach (string group in GroupList)
+					if (entity.ExtensionDictionary!=ObjectId.Null)
 					{
-						buffer.Add(new TypedValue((int)DxfCode.Text, group));
-					}
-					//Проверяем, есть ли запись словаря, закреплённая (мной) за плагином
-					if (dict.Contains(AppRecordKey))
-					{
-						// Если запись уже есть - получаем XRecord, и перезаписываем группы
-						Xrecord xrecord = transaction.GetObject(
-							dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
-						xrecord.Data = buffer;
-					}
-					else
-					{
-						// Словаря нет - создаем запись словаря и XRecord
-						Xrecord xrecord = new Xrecord();
-						xrecord.Data = buffer;
-						dict.SetAt(AppRecordKey, xrecord);
-						transaction.AddNewlyCreatedDBObject(xrecord, true);
+						using (DBDictionary dict = (DBDictionary)transaction.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite))
+						{
+							if (dict.Contains(AppRecordKey))
+							{
+							    dict.Remove(AppRecordKey);
+							}
+						}
 					}
 				}
 			}
@@ -168,6 +184,18 @@ namespace BargElectro
 		public bool IsBelongToGroup(string group)
 		{
 			if (GroupList.Contains(group))
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		public bool Equals(GroupObject other)
+		{
+			if (this.objectid == other.objectid)
 			{
 				return true;
 			}
