@@ -18,6 +18,7 @@ namespace BargElectro
 	public class ElectroLines
 	{
 		//TODO: Добавить возможность клика по линии с целью узнать, к каким линиям принадлежит
+		//TODO: Переименование групп. Вначале замена одного имени на другое, затем вопрос, добавлять ли имя, если его не было?
 		const string AppRecordKey = "BargElectroLinesGroup";
 		Document dwg;
 		Database CurrentDatabase;
@@ -35,11 +36,12 @@ namespace BargElectro
 		public void AddLinesToGroup()
 		{
 			Editor editor = dwg.Editor;
-			//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
-			string GroupName = AskForGroup(false, FindGroups().Keys.ToList());
-			if (GroupName != null)
+			using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 			{
-				using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
+				GroupsInformation groupsEntities = new GroupsInformation(acadTrans, CurrentDatabase);
+				//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
+				string GroupName = AskForGroup(false, groupsEntities.GroupList);
+				if (GroupName != null)
 				{
 					// Готовим опции для запроса элементов группы
 					PromptSelectionOptions acadSelectionOptions = new PromptSelectionOptions();
@@ -63,49 +65,12 @@ namespace BargElectro
 						{
 							if (selectedObj!=null)
 							{
-								Entity entity = acadTrans.GetObject(selectedObj.ObjectId, OpenMode.ForWrite) as Entity;
-								if (entity!=null)
-								{
-									// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
-									if (entity.ExtensionDictionary==ObjectId.Null)
-									{
-										entity.CreateExtensionDictionary();
-									}
-									using (DBDictionary dict = acadTrans.GetObject(
-										entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
-									{
-										//Готовим данные с именем группы для записи в XRecord
-										TypedValue data = new TypedValue((int)DxfCode.Text, GroupName);
-										ResultBuffer buffer = new ResultBuffer(data);
-										//Проверяем, есть ли запись словаря, закреплённая (мной) за плагином
-										if (dict.Contains(AppRecordKey))
-										{
-											// Если запись уже есть - получаем XRecord, и добавляем туда новую группу
-											// (проверяем, естественно, вдруг такая уже есть)
-											Xrecord xrecord = acadTrans.GetObject(
-												dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
-											if (!xrecord.Data.AsArray().Contains(data))
-											{
-												buffer = xrecord.Data;
-												buffer.Add(data);
-												xrecord.Data = buffer;
-											}
-										}
-										else
-										{
-											// Словаря нет - создаем запись словаря и XRecord
-											Xrecord xrecord = new Xrecord();
-											xrecord.Data = buffer;
-											dict.SetAt(AppRecordKey, xrecord);
-											acadTrans.AddNewlyCreatedDBObject(xrecord, true);
-										}
-									}
-								}
+								groupsEntities.AppendGroupToObject(selectedObj.ObjectId, GroupName);
 							}
 						}
 					}
-					acadTrans.Commit();
 				}
+				acadTrans.Commit();
 			}
 		}
 		
@@ -117,27 +82,26 @@ namespace BargElectro
 		{
 			//SortedDictionary, в котором будут храниться номера групп и длины
 			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
-			// Словарь для хранения групп и примитивов, принадлежащих им
-			SortedDictionary<string, List<ObjectId>> Groups = FindGroups();
 			using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 			{
+				GroupsInformation groupsEntities = new GroupsInformation(acadTrans, CurrentDatabase);
 				// Итерируем по группам и объектам групп, получаем длины объектов и записываем в словарь длин
-				foreach (KeyValuePair<string, List<ObjectId>> kvp in Groups)
+				foreach (string group in groupsEntities.GroupList)
 				{
-					foreach (ObjectId objectid in kvp.Value)
+					foreach (ObjectId objectid in groupsEntities.GetObjectsOfGroup(group))
 					{
 						if (objectid != null)
 						{
 							Curve entity = acadTrans.GetObject(objectid, OpenMode.ForRead) as Curve;
 							if (entity!=null)
 							{
-								if (GroupLenghts.ContainsKey(kvp.Key))
+								if (GroupLenghts.ContainsKey(group))
 								{
-									GroupLenghts[kvp.Key] += entity.GetDistanceAtParameter(entity.EndParam);
+									GroupLenghts[group] += entity.GetDistanceAtParameter(entity.EndParam);
 								}
 								else
 								{
-									GroupLenghts.Add(kvp.Key, entity.GetDistanceAtParameter(entity.EndParam));
+									GroupLenghts.Add(group, entity.GetDistanceAtParameter(entity.EndParam));
 								}
 							}
 						}
@@ -151,46 +115,20 @@ namespace BargElectro
 			}
 		}
 
-		/// <summary>
-		/// Возвращает XRecord в словаре recordKey объекта в режиме для чтения
-		/// </summary>
-		/// <param name="recordKey">Ключ словаря, который должен содержать XRecord</param>
-		/// <param name="objectid">ObjectID объекта, у которого мы получаем XRecord</param>
-		/// <param name="transaction">Используемая транзакция</param>
-		/// <returns>XRecord в режиме ForRead</returns>
-		Xrecord getXrecord(string recordKey, ObjectId objectid, Transaction transaction)
-		{
-			// Получаем входной объект как Entity
-			Entity entity = transaction.GetObject(objectid, OpenMode.ForRead) as Entity;
-			if (entity != null)
-			{
-				// Проверяем, есть ли словарь у объекта
-				if (entity.ExtensionDictionary != ObjectId.Null)
-				{
-					// 
-					using (DBDictionary dict = transaction.GetObject(
-						entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary)
-					{
-						if (dict.Contains(recordKey))
-						{
-							return transaction.GetObject(dict.GetAt(recordKey), OpenMode.ForRead) as Xrecord;
-						}
-					}
-				}
-			}
-			return null;
-		}
-		
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
 			// FIXME: проверка на наличие групп в чертеже (падает, если задать несуществующую)
 		{
 			Editor editor = dwg.Editor;
-			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
-			string group = AskForGroup(true, groups.Keys.ToList());
-			if (group != null)
+//			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
+			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 			{
-				editor.SetImpliedSelection(groups[group].ToArray());
+				GroupsInformation groupsEntities = new GroupsInformation(transaction, CurrentDatabase);
+				string group = AskForGroup(true, groupsEntities.GroupList);
+				if (group != null)
+				{
+					editor.SetImpliedSelection(groupsEntities.GetObjectsOfGroup(group).ToArray());
+				}
 			}
 		}
 		
@@ -208,11 +146,7 @@ namespace BargElectro
 				prmptKeywordOpt.Keywords.Add(group);
 			}
 			prmptKeywordOpt.AllowNone = false;
-			if (groups.Count == 0)
-			{
-				prmptKeywordOpt.Keywords.Add("Гр.1");
-			}
-			else
+			if (groups.Count != 0)
 			{
 				prmptKeywordOpt.Keywords.Default = groups[0];
 			}
@@ -241,65 +175,8 @@ namespace BargElectro
 			}
 		}
 		
-		/// <summary>
-		/// Метод ищет по всем объектам чертежа информацию по группам
-		/// </summary>
-		/// <returns>Сортированный словарь, содержащий список групп, и списки ObjectId, относящихся к ним объектов</returns>
-		SortedDictionary<string, List<ObjectId>> FindGroups()
-		{
-			SortedDictionary<string, List<ObjectId>> groups = new SortedDictionary<string, List<ObjectId>>();
-			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
-			{
-				BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(CurrentDatabase.CurrentSpaceId, OpenMode.ForRead);
-				var entities = from ObjectId entity in btr 
-					where transaction.GetObject(entity, OpenMode.ForRead) is Entity 
-					select entity;
-				foreach (ObjectId entity in entities)
-				{
-					Xrecord record = getXrecord(AppRecordKey, entity, transaction);
-					if (record != null)
-					{
-						ResultBuffer buffer = record.Data;
-						//Проходим по каждому значению в XRecord
-						foreach (TypedValue recordValue in buffer)
-						{
-							//Проверяем, была ли у нас такая группа?
-							if (groups.ContainsKey(recordValue.Value.ToString()))
-							{
-								groups[recordValue.Value.ToString()].Add(entity);
-							}
-							else
-							{
-								groups.Add(recordValue.Value.ToString(), new List<ObjectId>(){entity});
-							}
-						}
-					}
-				}
-			}
-			return groups;
-		}
-		
-		List<string> GetPrimitiveGroups(Xrecord xrecord)
-		{
-			List<string> groups = new List<string>();
-			if (xrecord != null)
-			{
-				ResultBuffer buffer = xrecord.Data;
-				//Проходим по каждому значению в XRecord
-				foreach (TypedValue recordValue in buffer)
-				{
-					//Проверяем, была ли у нас такая группа?
-					if (!groups.Contains(recordValue.Value.ToString()))
-					{
-						groups.Add(recordValue.Value.ToString());
-					}
-				}
-			}
-			return groups;
-		}
-		
-		[CommandMethod("DeleteGroupLine", CommandFlags.UsePickSet)]
-		public void DeleteGroupLine()
+		[CommandMethod("DeleteGroupFromLine", CommandFlags.UsePickSet)]
+		public void DeleteGroupFromLine()
 		{
 			Editor editor = dwg.Editor;
 			PromptSelectionResult selectionResult = editor.SelectImplied();
@@ -315,9 +192,10 @@ namespace BargElectro
 				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 				{
 					SelectionSet selectionSet = selectionResult.Value;
+					GroupsInformation groupEntities = new GroupsInformation(transaction, CurrentDatabase);
 					foreach (SelectedObject selectedObject in selectionSet)
 					{
-						foreach (string group in GetPrimitiveGroups(getXrecord(AppRecordKey, selectedObject.ObjectId, transaction)))
+						foreach (string group in groupEntities.GetGroupsOfObject(selectedObject.ObjectId))
 						{
 							if (!groupList.Contains(group))
 							{
@@ -325,36 +203,65 @@ namespace BargElectro
 							}
 						}
 					}
-					
+					groupList.Sort();
+					string groupName = AskForGroup(true, groupList);
+					if (groupName!=null)
+					{
+						foreach (SelectedObject selectedObject in selectionSet)
+						{
+							groupEntities.DeleteGroupFromObject(selectedObject.ObjectId, groupName);
+						}
+					}
+					transaction.Commit();
 				}
 			}
 		}
 		
-		[CommandMethod("Proba")]
-		public void Proba()
+		[CommandMethod("ChangeGroupOfLines", CommandFlags.UsePickSet)]
+		public void ChangeGroupOfLines()
 		{
 			Editor editor = dwg.Editor;
-			PromptSelectionResult result = editor.GetSelection();
-			if (result.Status == PromptStatus.OK)
+			PromptSelectionResult selectionResult = editor.SelectImplied();
+			List<string> groupList = new List<string>();
+			if (selectionResult.Status != PromptStatus.OK)
+			{
+				PromptSelectionOptions selectionOptions = new PromptSelectionOptions();
+				selectionOptions.MessageForAdding = "\nУкажите объекты";
+				selectionResult = editor.GetSelection(selectionOptions);
+			}
+			if (selectionResult.Status == PromptStatus.OK)
 			{
 				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 				{
-					SelectionSet selset = result.Value;
-					List<GroupObject> groupObject = new List<GroupObject>();
-					foreach (SelectedObject selObj in selset)
+					SelectionSet selectionSet = selectionResult.Value;
+					GroupsInformation groupEntities = new GroupsInformation(transaction, CurrentDatabase);
+					foreach (SelectedObject selectedObject in selectionSet)
 					{
-						groupObject.Add(new GroupObject(selObj.ObjectId, transaction));
-						groupObject[groupObject.Count-1].AddGroup("Гр.1");
-						groupObject[groupObject.Count-1].WriteGroups();
+						foreach (string group in groupEntities.GetGroupsOfObject(selectedObject.ObjectId))
+						{
+							if (!groupList.Contains(group))
+							{
+								groupList.Add(group);
+							}
+						}
 					}
-//					foreach (GroupObject grOb in groupObject)
-//					{
-//						editor.WriteMessage("\nВыделенный объект принадлежит группам {0}", grOb.GetGroups()[0]);
-//						grOb.WriteGroups();
-//					}
+					groupList.Sort();
+					string previousName = AskForGroup(true, groupList);
+					if (previousName!=null)
+					{
+						string newName = AskForGroup(false, groupEntities.GroupList);
+						if (newName!=null)
+						{
+							foreach (SelectedObject selectedObject in selectionSet)
+							{
+								groupEntities.RenameGroupOfObject(selectedObject.ObjectId, previousName, newName);
+							}
+						}
+					}
 					transaction.Commit();
 				}
 			}
+			
 		}
 	}
 }
