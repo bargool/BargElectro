@@ -123,6 +123,10 @@ namespace BargElectro
 							if (dict.Contains(AppRecordKey))
 							{
 							    dict.Remove(AppRecordKey);
+							    if (dict.Count==0)
+							    {
+							    	dict.Erase();
+							    }
 							}
 						}
 					}
