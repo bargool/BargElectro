@@ -261,7 +261,43 @@ namespace BargElectro
 					transaction.Commit();
 				}
 			}
-			
+		}
+		[CommandMethod("GetGroupsOfObject", CommandFlags.UsePickSet)]
+		public void GetGroupsOfObject()
+		{
+			Editor editor = dwg.Editor;
+			PromptSelectionResult selectionResult = editor.SelectImplied();
+			List<string> groupList = new List<string>();
+			if (selectionResult.Status != PromptStatus.OK)
+			{
+				PromptSelectionOptions selectionOptions = new PromptSelectionOptions();
+				selectionOptions.MessageForAdding = "\nУкажите объекты";
+				selectionResult = editor.GetSelection(selectionOptions);
+			}
+			if (selectionResult.Status == PromptStatus.OK)
+			{
+				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
+				{
+					SelectionSet selectionSet = selectionResult.Value;
+					GroupsInformation groupEntities = new GroupsInformation(transaction, CurrentDatabase);
+					foreach (SelectedObject selectedObject in selectionSet)
+					{
+						foreach (string group in groupEntities.GetGroupsOfObject(selectedObject.ObjectId))
+						{
+							if (!groupList.Contains(group))
+							{
+								groupList.Add(group);
+							}
+						}
+					}
+					groupList.Sort();
+				}
+				editor.WriteMessage("\nГруппы, к которым принадлежат объекты: ");
+				foreach (string group in groupList)
+				{
+					editor.WriteMessage("\n{0}", group);	
+				}
+			}
 		}
 	}
 }
