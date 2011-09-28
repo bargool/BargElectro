@@ -23,9 +23,16 @@ namespace BargElectro
 		List<GroupObject> groupObjects;
 		Transaction transaction;
 		List<string> groupList;
+		
+		public List<string> GroupList
+		{
+			get { return groupList; }
+		}
+		
 		Database currentDatabase;
 		public GroupsInformation()
 		{
+			throw new ArgumentNullException("Transaction and Database have to be as argument");
 		}
 		
 		public GroupsInformation(Transaction transaction, Database currDatabase)
@@ -59,20 +66,61 @@ namespace BargElectro
 							groupList.Add(group);
 						}
 					}
-					groupList.Sort();
 				}
 			}
+			groupList.Sort();
 		}
 		
-		public void AppendObjectToGroup(ObjectId objectid, string group)
+		public void AppendGroupToObject(ObjectId objectid, string group)
 			//TODO: Необходимо проверять, нету ли уже такого объекта в списке объектов?
 		{
+			GroupObject groupObj = new GroupObject(objectid, transaction);
+			int index = groupObjects.IndexOf(groupObj);
+			if (index == -1)
+			{
+				groupObj.AddGroup(group);
+				groupObjects.Add(groupObj);
+				index = groupObjects.Count-1;
+			}
+			else
+			{
+				groupObjects[index].AddGroup(group);
+			}
+			groupObjects[index].WriteGroups();
+		}
+		
+		public void DeleteGroupFromObject(ObjectId objectid, string group)
+		{
+			GroupObject groupObj = new GroupObject(objectid, transaction);
+			int index = groupObjects.IndexOf(groupObj);
+			if (index != -1)
+			{
+				groupObjects[index].DeleteGroup(group);
+				if (!groupObjects[index].HasGroup)
+				{
+					groupObjects.RemoveAt(index);
+				}
+			}
+			else
+			{
+				groupObjects[index].AddGroup(group);
+			}
+			groupObjects[index].WriteGroups();
 			
 		}
 		
-		public void DeleteObjectFromGroup(ObjectId objectid, string group)
+		public List<string> GetGroupsOfObject(ObjectId objectid)
 		{
-			
+			GroupObject groupObj = new GroupObject(objectid, transaction);
+			int index = groupObjects.IndexOf(groupObj);
+			if (index!=-1)
+			{
+				return groupObjects[index].GetGroups();
+			}
+			else
+			{
+				return null;
+			}
 		}
 		
 		IEnumerator IEnumerable.GetEnumerator()
