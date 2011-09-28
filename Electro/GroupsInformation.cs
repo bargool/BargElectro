@@ -72,7 +72,7 @@ namespace BargElectro
 		}
 		
 		public void AppendGroupToObject(ObjectId objectid, string group)
-			//TODO: Необходимо проверять, нету ли уже такого объекта в списке объектов?
+			//TODO: При добавлении новой группы не обновляется список групп (а надо ли это, ведь он считывается заново при каждом вызове комманд?)
 		{
 			GroupObject groupObj = new GroupObject(objectid, transaction);
 			int index = groupObjects.IndexOf(groupObj);
@@ -98,28 +98,50 @@ namespace BargElectro
 				groupObjects[index].DeleteGroup(group);
 				if (!groupObjects[index].HasGroup)
 				{
+					groupObjects[index].WriteGroups();
 					groupObjects.RemoveAt(index);
 				}
 			}
-			else
-			{
-				groupObjects[index].AddGroup(group);
-			}
-			groupObjects[index].WriteGroups();
-			
 		}
 		
 		public List<string> GetGroupsOfObject(ObjectId objectid)
 		{
-			GroupObject groupObj = new GroupObject(objectid, transaction);
-			int index = groupObjects.IndexOf(groupObj);
-			if (index!=-1)
+			if (objectid!=null)
 			{
-				return groupObjects[index].GetGroups();
+				GroupObject groupObj = new GroupObject(objectid, transaction);
+				int index = groupObjects.IndexOf(groupObj);
+				if (index!=-1)
+				{
+					return groupObjects[index].GetGroups();
+				}
 			}
-			else
+			return null;
+		}
+		
+		public List<ObjectId> GetObjectsOfGroup(string group)
+		{
+			List<ObjectId> objectsOfGroup = new List<ObjectId>();
+			if (group != null)
 			{
-				return null;
+				foreach (GroupObject groupObj in groupObjects)
+				{
+					if (groupObj.IsBelongToGroup(group))
+					{
+						objectsOfGroup.Add(groupObj.objectid);
+					}
+				}
+			}
+			return objectsOfGroup;
+		}
+		
+		public void RenameGroupOfObject(ObjectId objectid, string previousName, string newName)
+		{
+			GroupObject groupObj = new GroupObject(objectid, transaction);
+			if (groupObj.IsBelongToGroup(previousName))
+			{
+				int index = groupObjects.IndexOf(groupObj);
+				groupObjects[index].ChangeGroup(previousName, newName);
+				groupObjects[index].WriteGroups();
 			}
 		}
 		
