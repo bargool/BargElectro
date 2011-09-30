@@ -30,7 +30,7 @@ namespace BargElectro
 		}
 		
 		/// <summary>
-		/// Метод добавляет к линейным примитивам XRecord с именем группы
+		/// Команда добавляет к линейным примитивам XRecord с именем группы
 		/// </summary>
 		[CommandMethod("AddLinesToGroup")]
 		public void AddLinesToGroup()
@@ -77,8 +77,8 @@ namespace BargElectro
 		/// <summary>
 		/// Команда выводит список групп и суммарную длину в плане
 		/// </summary>
-		[CommandMethod("GetLinesroup")]
-		public void GetLinesGroup()
+		[CommandMethod("GetGroupLengths")]
+		public void GetGroupLengths()
 		{
 			//SortedDictionary, в котором будут храниться номера групп и длины
 			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
@@ -115,6 +115,9 @@ namespace BargElectro
 			}
 		}
 
+		/// <summary>
+		/// Команда запрашивает имя группы и выделяет примитивы, принадлежащие данной группе
+		/// </summary>
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
 			// FIXME: проверка на наличие групп в чертеже (падает, если задать несуществующую)
@@ -175,6 +178,9 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Команда удаляет информацию об указанной группе из примитива
+		/// </summary>
 		[CommandMethod("DeleteGroupFromLine", CommandFlags.UsePickSet)]
 		public void DeleteGroupFromLine()
 		{
@@ -217,6 +223,10 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Команда заменяет (переименовывает группу) информацию о группе с одной на другую, если в примитиве присутсвует
+		/// как первая, так и вторая группа - первая группа удаляется
+		/// </summary>
 		[CommandMethod("ChangeGroupOfLines", CommandFlags.UsePickSet)]
 		public void ChangeGroupOfLines()
 		{
@@ -262,6 +272,10 @@ namespace BargElectro
 				}
 			}
 		}
+		
+		/// <summary>
+		/// Команда выводит в командную строку список групп выделенных примитивов
+		/// </summary>
 		[CommandMethod("GetGroupsOfObject", CommandFlags.UsePickSet)]
 		public void GetGroupsOfObject()
 		{
