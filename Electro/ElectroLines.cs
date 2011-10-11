@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 
 //Autodesk
+using acad = Autodesk.AutoCAD.ApplicationServices.Application;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -17,7 +18,6 @@ namespace BargElectro
 {
 	public class ElectroLines
 	{
-		//TODO: Добавить возможность клика по линии с целью узнать, к каким линиям принадлежит
 		//TODO: Переименование групп. Вначале замена одного имени на другое, затем вопрос, добавлять ли имя, если его не было?
 		const string AppRecordKey = "BargElectroLinesGroup";
 		Document dwg;
@@ -25,7 +25,7 @@ namespace BargElectro
 		
 		public ElectroLines()
 		{
-			dwg = Application.DocumentManager.MdiActiveDocument;
+			dwg = acad.DocumentManager.MdiActiveDocument;
 			CurrentDatabase = dwg.Database;
 		}
 		
@@ -79,6 +79,7 @@ namespace BargElectro
 		/// </summary>
 		[CommandMethod("GetGroupLengths")]
 		public void GetGroupLengths()
+			//FIXME: Падает если удалить группы, а потом обратиться к ним. Если сделать audit - всё нормально.
 		{
 			//SortedDictionary, в котором будут храниться номера групп и длины
 			SortedDictionary<string, double> GroupLenghts = new SortedDictionary<string, double>();
@@ -120,10 +121,8 @@ namespace BargElectro
 		/// </summary>
 		[CommandMethod("SelectGroup")]
 		public void SelectGroup()
-			// FIXME: проверка на наличие групп в чертеже (падает, если задать несуществующую)
 		{
 			Editor editor = dwg.Editor;
-//			SortedDictionary<string, List<ObjectId>> groups = FindGroups();
 			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(transaction, CurrentDatabase);
@@ -276,41 +275,90 @@ namespace BargElectro
 		/// <summary>
 		/// Команда выводит в командную строку список групп выделенных примитивов
 		/// </summary>
-		[CommandMethod("GetGroupsOfObject", CommandFlags.UsePickSet)]
+		[CommandMethod("GetGroupsOfObject")]
 		public void GetGroupsOfObject()
 		{
 			Editor editor = dwg.Editor;
-			PromptSelectionResult selectionResult = editor.SelectImplied();
-			List<string> groupList = new List<string>();
-			if (selectionResult.Status != PromptStatus.OK)
-			{
-				PromptSelectionOptions selectionOptions = new PromptSelectionOptions();
-				selectionOptions.MessageForAdding = "\nУкажите объекты";
-				selectionResult = editor.GetSelection(selectionOptions);
-			}
+			List<string> groupList = null;
+			PromptEntityOptions selectionOptions = new PromptEntityOptions("\nВыберите объект");
+			selectionOptions.AllowNone = false;
+			PromptEntityResult selectionResult = editor.GetEntity(selectionOptions);
 			if (selectionResult.Status == PromptStatus.OK)
 			{
 				using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 				{
-					SelectionSet selectionSet = selectionResult.Value;
 					GroupsInformation groupEntities = new GroupsInformation(transaction, CurrentDatabase);
-					foreach (SelectedObject selectedObject in selectionSet)
+					groupList = groupEntities.GetGroupsOfObject(selectionResult.ObjectId);
+				}
+				if (groupList!=null)
+				{
+					editor.WriteMessage("\nГруппы, к которым принадлежат объекты: ");
+					foreach (string group in groupList)
+						editor.WriteMessage("\n{0}", group);	
+				}
+				else
+				{
+					editor.WriteMessage("\nОбъект не принадлежит никаким группам!");
+				}
+			}
+		}
+		
+		[CommandMethod("BRenGr")]
+		public void RenameGroup()
+		{
+			Editor ed = dwg.Editor;
+			List<string> groupList = null;
+			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				GroupsInformation groupEntities = new GroupsInformation(transaction, CurrentDatabase);
+				groupList = groupEntities.GroupList;
+				if (groupList.Count == 0)
+				{
+					ed.WriteMessage("\nВ чертеже нет групп!");
+					return;
+				}
+				ed.WriteMessage("\nПереименовываем группу:");
+				string oldGroupName = AskForGroup(true, groupList);
+				ed.WriteMessage(oldGroupName);
+				string newGroupName = AskForGroup(false, groupList);
+				ed.WriteMessage(newGroupName);
+				foreach (GroupObject go in groupEntities)
+				{
+					go.ChangeGroup(oldGroupName, newGroupName);
+					go.WriteGroups();
+				}
+				transaction.Commit();
+			}
+		}
+		[CommandMethod("BDelGrInfo")]
+		public void DeleteAllGroupInformation()
+		{
+			Editor ed = dwg.Editor;
+			PromptKeywordOptions pkOpts = new PromptKeywordOptions(
+				"\nВы собираетесь удалить всю информацию о группах с чертежа. Точно? [Yes/No]", "Yes No");
+			pkOpts.AllowArbitraryInput = false;
+			pkOpts.AllowNone = false;
+			PromptResult res = ed.GetKeywords(pkOpts);
+			switch (res.StringResult)
+			{
+				case "Yes":
+					ed.WriteMessage("\nВперёд!!!");
+					using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
 					{
-						foreach (string group in groupEntities.GetGroupsOfObject(selectedObject.ObjectId))
+						GroupsInformation groupEntities = new GroupsInformation(tr, CurrentDatabase);
+						foreach (string group in groupEntities.GroupList)
 						{
-							if (!groupList.Contains(group))
+							foreach (ObjectId id in groupEntities.GetObjectsOfGroup(group))
 							{
-								groupList.Add(group);
+								groupEntities.DeleteGroupFromObject(id, group);
 							}
 						}
+						tr.Commit();
 					}
-					groupList.Sort();
-				}
-				editor.WriteMessage("\nГруппы, к которым принадлежат объекты: ");
-				foreach (string group in groupList)
-				{
-					editor.WriteMessage("\n{0}", group);	
-				}
+					break;
+				case "No":
+					ed.WriteMessage("\nФфух!");
+					break;
 			}
 		}
 	}
