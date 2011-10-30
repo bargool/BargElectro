@@ -361,5 +361,55 @@ namespace BargElectro
 					break;
 			}
 		}
+		
+		[CommandMethod("GLeader")]
+		public void DrawGroupLeader()
+		{
+			Editor ed = dwg.Editor;
+			PromptEntityOptions prmtEntityOpts = new PromptEntityOptions("Укажите линию");
+			prmtEntityOpts.AllowNone = false;
+			prmtEntityOpts.SetRejectMessage("Должна быть линия или полилиния!");
+			prmtEntityOpts.AddAllowedClass(typeof(Line), true);
+			prmtEntityOpts.AddAllowedClass(typeof(Polyline), true);
+			PromptEntityResult entRes = ed.GetEntity(prmtEntityOpts);
+			if (entRes.Status!= PromptStatus.OK)
+			{
+				return;
+			}
+			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				GroupsInformation groupEntities = new GroupsInformation(tr, CurrentDatabase);
+				List<string> groupList = groupEntities.GetGroupsOfObject(entRes.ObjectId);
+				if (groupList == null)
+				{
+					ed.WriteMessage("За указанным объектом не значится никаких групп!");
+					return;
+				}
+				PromptPointOptions pointOpts = new PromptPointOptions("\nУкажите точку вставки блока: ");
+				PromptPointResult pointRes = ed.GetPoint(pointOpts);
+				if (pointRes.Status!= PromptStatus.OK)
+				{
+					return;
+				}
+				BlockTable bt = (BlockTable)CurrentDatabase.BlockTableId(OpenMode.ForRead);
+				BlockReference gleader = new BlockReference(pointRes.Value, bt["group_vinoska"]);
+				gleader.SetDatabaseDefaults;
+				ViewportTableRecord vtr = (ViewTableRecord)CurrentDatabase.CurrentViewportTableRecordId
+					.GetObject(OpenMode.ForRead);
+				gleader.Annotative = vtr.Annotative;
+				AttributeCollection glAttsColl = gleader.AttributeCollection;
+				var glAtts = glAttsColl.Cast<ObjectId>()
+					.Select(n => (AttributeReference)n.GetObject(OpenMode.ForRead))
+					.OrderBy(n => n.Tag);
+				foreach (ObjectId attId in glAtts)
+				{
+					AttributeReference att = (AttributeReference)attId.GetObject(OpenMode.ForRead);
+					if (condition)
+					{
+						
+					}
+				}
+			}
+		}
 	}
 }
