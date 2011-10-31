@@ -5,12 +5,13 @@ using System.Linq;
 using System.Text;
 
 //Autodesk
-using acad = Autodesk.AutoCAD.ApplicationServices.Application;
-using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
+using Autodesk.AutoCAD.Internal;
+using Autodesk.AutoCAD.Runtime;
+using acad = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(BargElectro.ElectroLines))]
 
@@ -391,24 +392,63 @@ namespace BargElectro
 				{
 					return;
 				}
-				BlockTable bt = (BlockTable)CurrentDatabase.BlockTableId(OpenMode.ForRead);
-				BlockReference gleader = new BlockReference(pointRes.Value, bt["group_vinoska"]);
-				gleader.SetDatabaseDefaults;
-				ViewportTableRecord vtr = (ViewTableRecord)CurrentDatabase.CurrentViewportTableRecordId
-					.GetObject(OpenMode.ForRead);
-				gleader.Annotative = vtr.Annotative;
-				AttributeCollection glAttsColl = gleader.AttributeCollection;
-				var glAtts = glAttsColl.Cast<ObjectId>()
-					.Select(n => (AttributeReference)n.GetObject(OpenMode.ForRead))
-					.OrderBy(n => n.Tag);
-				foreach (ObjectId attId in glAtts)
+				BlockTable bt = (BlockTable)CurrentDatabase.BlockTableId.GetObject(OpenMode.ForRead);
+				BlockTableRecord btrSpace = (BlockTableRecord)CurrentDatabase.CurrentSpaceId
+					.GetObject(OpenMode.ForWrite);
+				if (!bt.Has("group_vinoska"))
 				{
-					AttributeReference att = (AttributeReference)attId.GetObject(OpenMode.ForRead);
-					if (condition)
+				    ed.WriteMessage("\nВ файле не определён блок выноски!!");
+				    return;
+				}
+				BlockTableRecord gleaderBtr = (BlockTableRecord)bt["group_vinoska"].GetObject(OpenMode.ForRead);
+				BlockReference gleader = new BlockReference(pointRes.Value, gleaderBtr.ObjectId);
+				btrSpace.AppendEntity(gleader);
+				tr.AddNewlyCreatedDBObject(gleader, true);
+				
+				//Если блок аннотативный - добавляем в таблицу аннотативных масштабов блока текущий масштаб
+				ObjectContextManager ocm = CurrentDatabase.ObjectContextManager;
+				ObjectContextCollection occ = ocm.GetContextCollection("ACDB_ANNOTATIONSCALES");
+				if (gleaderBtr.Annotative == AnnotativeStates.True)
+				{
+					ObjectContexts.AddContext(gleader, occ.CurrentContext);
+				}
+				
+				gleader.SetDatabaseDefaults();
+				if (gleaderBtr.HasAttributeDefinitions)
+				{
+					var attDefs = gleaderBtr.Cast<ObjectId>()
+						.Where(n => n.ObjectClass.Name == "AcDbAttributeDefinition")
+						.Select(n => (AttributeDefinition)n.GetObject(OpenMode.ForRead));
+					foreach (AttributeDefinition attdef in attDefs)
 					{
-						
+						AttributeReference attref = new AttributeReference();
+						attref.SetAttributeFromBlock(attdef, gleader.BlockTransform);
+						gleader.AttributeCollection.AppendAttribute(attref);
+						tr.AddNewlyCreatedDBObject(attref, true);
+						if (gleaderBtr.Annotative == AnnotativeStates.True)
+						{
+							ObjectContexts.AddContext(attref, occ.CurrentContext);
+						}
+						int attCount = int.Parse(attref.Tag.Remove(0,10));
+						if (attCount<=groupList.Count)
+						{
+							attref.TextString = groupList[attCount-1];
+						}
 					}
 				}
+				
+				if (gleaderBtr.IsDynamicBlock)
+				{
+					DynamicBlockReferencePropertyCollection dynBRefColl = gleader.DynamicBlockReferencePropertyCollection;
+					foreach (DynamicBlockReferenceProperty prop in dynBRefColl)
+					{
+						if (prop.PropertyName == "Lookup1")
+						{
+							prop.Value = prop.GetAllowedValues()[groupList.Count-1];
+						}
+					}
+				}
+				tr.Commit();
 			}
 		}
 	}
