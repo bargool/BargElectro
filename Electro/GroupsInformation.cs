@@ -96,9 +96,9 @@ namespace BargElectro
 			if (index != -1)
 			{
 				groupObjects[index].DeleteGroup(group);
+				groupObjects[index].WriteGroups();
 				if (!groupObjects[index].HasGroup)
 				{
-					groupObjects[index].WriteGroups();
 					groupObjects.RemoveAt(index);
 				}
 			}
