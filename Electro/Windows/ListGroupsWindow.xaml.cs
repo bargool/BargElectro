@@ -30,6 +30,13 @@ namespace BargElectro.Windows
 		public ListGroupsWindow(List<string> items, bool CanAddNew)
 		{
 			this.items = items;
+//			pnlAddNew.IsEnabled = CanAddNew;
+            //pnlAddNew.Visibility = CanAddNew ? Visibility.Visible : Visibility.Collapsed;
+            btnAdd.Visibility = CanAddNew ? Visibility.Visible : Visibility.Collapsed;
+            //if (!CanAddNew)
+            //{
+            //    pnlAddNew.Visibility= Visibility.;
+            //}
 			InitializeComponent();
 		}
 		

@@ -459,7 +459,7 @@ namespace BargElectro
 			{
 				GroupsInformation ents = new GroupsInformation(tr, CurrentDatabase);
 				BargElectro.Windows.ListGroupsWindow win =
-					new BargElectro.Windows.ListGroupsWindow(ents.GroupList);
+					new BargElectro.Windows.ListGroupsWindow(ents.GroupList, false);
 				win.ShowDialog();
 			}
 		}
