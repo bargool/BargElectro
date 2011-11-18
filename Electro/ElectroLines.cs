@@ -451,5 +451,17 @@ namespace BargElectro
 				tr.Commit();
 			}
 		}
+		
+		[CommandMethod("ShowDialogue")]
+		public void ShowDialogue()
+		{
+			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				GroupsInformation ents = new GroupsInformation(tr, CurrentDatabase);
+				BargElectro.Windows.ListGroupsWindow win =
+					new BargElectro.Windows.ListGroupsWindow(ents.GroupList);
+				win.ShowDialog();
+			}
+		}
 	}
 }

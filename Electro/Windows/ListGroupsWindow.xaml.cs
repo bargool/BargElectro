@@ -20,9 +20,24 @@ namespace BargElectro.Windows
 	/// </summary>
 	public partial class ListGroupsWindow : Window
 	{
+		List<string> items = new List<string>();
 		public ListGroupsWindow()
+			: this(new List<string>()) { }
+		
+		public ListGroupsWindow(List<string> items)
+			:this(items, true) { }
+		
+		public ListGroupsWindow(List<string> items, bool CanAddNew)
 		{
+			this.items = items;
 			InitializeComponent();
+		}
+		
+		void Window_Loaded(object sender, RoutedEventArgs e)
+		{
+			Binding binding1 = new Binding();
+			binding1.Source = items;
+			lstGroups.SetBinding(ListBox.ItemsSourceProperty, binding1);
 		}
 	}
 }
