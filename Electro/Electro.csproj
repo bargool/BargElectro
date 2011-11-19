@@ -83,8 +83,12 @@
     <Compile Include="GroupObject.cs" />
     <Compile Include="GroupsInformation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Windows\ListGroupsWindow.xaml.cs">
-      <DependentUpon>ListGroupsWindow.xaml</DependentUpon>
+    <Compile Include="Windows\ListAddGroupsWindow.xaml.cs">
+      <DependentUpon>ListAddGroupsWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Windows\ListSelectGroupsWindow.xaml.cs">
+      <DependentUpon>ListSelectGroupsWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -92,7 +96,8 @@
     <Folder Include="Windows" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Windows\ListGroupsWindow.xaml" />
+    <Page Include="Windows\ListAddGroupsWindow.xaml" />
+    <Page Include="Windows\ListSelectGroupsWindow.xaml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
