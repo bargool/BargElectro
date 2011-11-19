@@ -41,7 +41,7 @@ namespace BargElectro
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(acadTrans, CurrentDatabase);
 				//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
-				string GroupName = AskForGroup(false, groupsEntities.GroupList);
+				string GroupName = AskForGroup(true, groupsEntities.GroupList);
 				if (GroupName != null)
 				{
 					// Готовим опции для запроса элементов группы
@@ -127,7 +127,7 @@ namespace BargElectro
 			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(transaction, CurrentDatabase);
-				string group = AskForGroup(true, groupsEntities.GroupList);
+				string group = AskForGroup(false, groupsEntities.GroupList);
 				if (group != null)
 				{
 					editor.SetImpliedSelection(groupsEntities.GetObjectsOfGroup(group).ToArray());
@@ -138,44 +138,30 @@ namespace BargElectro
 		/// <summary>
 		/// Метод выводит запрос на имя группы, существующие группы выводятся в качетсве ключевых слов
 		/// </summary>
-		/// <param name="existing">запрос существующей группы, или новой</param>
+		/// <param name="CanAdd">запрос существующей группы, или новой</param>
 		/// <param name="groups">список существующих групп</param>
 		/// <returns>имя введённой группы</returns>
-		string AskForGroup(bool existing, List<string> groups)
+		string AskForGroup(bool CanAdd, List<string> groups)
 		{
-			PromptKeywordOptions prmptKeywordOpt = new PromptKeywordOptions("\nВыберите группу: ");
-			foreach (string group in groups)
+			if (CanAdd)
 			{
-				prmptKeywordOpt.Keywords.Add(group);
-			}
-			prmptKeywordOpt.AllowNone = false;
-			if (groups.Count != 0)
-			{
-				prmptKeywordOpt.Keywords.Default = groups[0];
-			}
-			if (existing)
-			{
-				prmptKeywordOpt.AllowArbitraryInput = false;
-			}
-			else
-			{
-				prmptKeywordOpt.Message = "\nВведите наименование группы: ";
-				prmptKeywordOpt.AllowArbitraryInput = true;
-			}
-			PromptResult result = dwg.Editor.GetKeywords(prmptKeywordOpt);
-			if (result.Status == PromptStatus.OK)
-			{
-				if (result.StringResult == "")
+				BargElectro.Windows.ListAddGroupsWindow win =
+					new BargElectro.Windows.ListAddGroupsWindow(groups);
+				if (true == win.ShowDialog())
 				{
-					dwg.Editor.WriteMessage("\nНеобходимо ввести наименование группы!");
-					return null;
+					return win.Group;
 				}
-				return result.StringResult;
 			}
 			else
 			{
-				return null;
+				BargElectro.Windows.ListSelectGroupsWindow win =
+					new BargElectro.Windows.ListSelectGroupsWindow(groups);
+				if (true == win.ShowDialog())
+				{
+					return win.Group;
+				}
 			}
+			return null;
 		}
 		
 		/// <summary>
@@ -210,7 +196,7 @@ namespace BargElectro
 						}
 					}
 					groupList.Sort();
-					string groupName = AskForGroup(true, groupList);
+					string groupName = AskForGroup(false, groupList);
 					if (groupName!=null)
 					{
 						foreach (SelectedObject selectedObject in selectionSet)
@@ -256,10 +242,10 @@ namespace BargElectro
 						}
 					}
 					groupList.Sort();
-					string previousName = AskForGroup(true, groupList);
+					string previousName = AskForGroup(false, groupList);
 					if (previousName!=null)
 					{
-						string newName = AskForGroup(false, groupEntities.GroupList);
+						string newName = AskForGroup(true, groupEntities.GroupList);
 						if (newName!=null)
 						{
 							foreach (SelectedObject selectedObject in selectionSet)
@@ -319,9 +305,9 @@ namespace BargElectro
 					return;
 				}
 				ed.WriteMessage("\nПереименовываем группу:");
-				string oldGroupName = AskForGroup(true, groupList);
+				string oldGroupName = AskForGroup(false, groupList);
 				ed.WriteMessage(oldGroupName);
-				string newGroupName = AskForGroup(false, groupList);
+				string newGroupName = AskForGroup(true, groupList);
 				ed.WriteMessage(newGroupName);
 				foreach (GroupObject go in groupEntities)
 				{
@@ -458,8 +444,8 @@ namespace BargElectro
 			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation ents = new GroupsInformation(tr, CurrentDatabase);
-				BargElectro.Windows.ListGroupsWindow win =
-					new BargElectro.Windows.ListGroupsWindow(ents.GroupList, false);
+				BargElectro.Windows.ListSelectGroupsWindow win =
+					new BargElectro.Windows.ListSelectGroupsWindow(ents.GroupList);
 				win.ShowDialog();
 			}
 		}
