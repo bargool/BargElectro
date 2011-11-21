@@ -53,22 +53,30 @@ namespace BargElectro
 				// Проверяем, есть ли словарь у объекта
 				if (entity.ExtensionDictionary != ObjectId.Null)
 				{
-					using (DBDictionary dict = transaction.GetObject(
-						entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary)
+					//TODO: доделать обработку exception
+					try
 					{
-						if (dict.Contains(AppRecordKey))
+						using (DBDictionary dict = transaction.GetObject(
+							entity.ExtensionDictionary, OpenMode.ForRead, false, false) as DBDictionary)
 						{
-							Xrecord xrecord = transaction.GetObject(dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
-							ResultBuffer buffer = xrecord.Data;
-							foreach (TypedValue recordValue in buffer)
+							if (dict.Contains(AppRecordKey))
 							{
-								groups.Add(recordValue.Value.ToString());
-							}
-							if (groups.Count != 0)
-							{
-								return groups;
+								Xrecord xrecord = transaction.GetObject(dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
+								ResultBuffer buffer = xrecord.Data;
+								foreach (TypedValue recordValue in buffer)
+								{
+									groups.Add(recordValue.Value.ToString());
+								}
+								if (groups.Count != 0)
+								{
+									return groups;
+								}
 							}
 						}
+					}
+					catch (Exception)
+					{
+//						id.Database.
 					}
 				}
 			}

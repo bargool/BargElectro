@@ -55,11 +55,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AcDbMgd">
-      <HintPath>..\..\..\ObjectARX 2010\inc-x64\AcDbMgd.dll</HintPath>
+      <HintPath>C:\ObjectARX 2010\inc-x64\AcDbMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="AcMgd">
-      <HintPath>..\..\..\ObjectARX 2010\inc-x64\AcMgd.dll</HintPath>
+      <HintPath>C:\ObjectARX 2010\inc-x64\AcMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />

@@ -51,7 +51,7 @@ namespace BargElectro
 			BlockTableRecord btr = (BlockTableRecord)transaction.GetObject(
 				bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
 			var entities = from ObjectId entity in btr 
-				where transaction.GetObject(entity, OpenMode.ForRead) is Entity 
+				where transaction.GetObject(entity, OpenMode.ForRead, false) is Entity 
 				select entity;
 			foreach (ObjectId entity in entities)
 			{

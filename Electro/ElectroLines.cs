@@ -40,7 +40,7 @@ namespace BargElectro
 			using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(acadTrans, CurrentDatabase);
-				//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
+				//Спрашиваем имя группы
 				string GroupName = AskForGroup(true, groupsEntities.GroupList);
 				if (GroupName != null)
 				{
@@ -448,6 +448,16 @@ namespace BargElectro
 					new BargElectro.Windows.ListSelectGroupsWindow(ents.GroupList);
 				win.ShowDialog();
 			}
+		}
+		
+		[CommandMethod("test")]
+		public void test()
+		{
+			DateTime begin = DateTime.Now;
+			GetGroupLengths();
+			DateTime end = DateTime.Now;
+			TimeSpan ts = end - begin;
+			dwg.Editor.WriteMessage("\nВремя работы: {0}", ts.TotalMilliseconds);
 		}
 	}
 }
