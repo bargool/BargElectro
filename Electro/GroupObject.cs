@@ -53,32 +53,25 @@ namespace BargElectro
 			if (entity != null)
 			{
 				// Проверяем, есть ли словарь у объекта
-				if (entity.ExtensionDictionary != ObjectId.Null)
+				if (entity.ExtensionDictionary != ObjectId.Null &&
+				   !entity.ExtensionDictionary.IsErased)
 				{
-					//TODO: доделать обработку exception, как-то можно узнать удален ли словарь?
-					try
+					using (DBDictionary dict = transaction.GetObject(
+						entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary)
 					{
-						using (DBDictionary dict = transaction.GetObject(
-							entity.ExtensionDictionary, OpenMode.ForRead, false, false) as DBDictionary)
+						if (dict.Contains(AppRecordKey))
 						{
-							if (dict.Contains(AppRecordKey))
+							Xrecord xrecord = transaction.GetObject(dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
+							ResultBuffer buffer = xrecord.Data;
+							foreach (TypedValue recordValue in buffer)
 							{
-								Xrecord xrecord = transaction.GetObject(dict.GetAt(AppRecordKey), OpenMode.ForRead) as Xrecord;
-								ResultBuffer buffer = xrecord.Data;
-								foreach (TypedValue recordValue in buffer)
-								{
-									groups.Add(recordValue.Value.ToString());
-								}
-								if (groups.Count != 0)
-								{
-									return groups;
-								}
+								groups.Add(recordValue.Value.ToString());
+							}
+							if (groups.Count != 0)
+							{
+								return groups;
 							}
 						}
-					}
-					catch (Autodesk.AutoCAD.Runtime.Exception ex)
-					{
-						
 					}
 				}
 			}
