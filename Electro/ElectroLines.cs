@@ -19,7 +19,6 @@ namespace BargElectro
 {
 	public class ElectroLines
 	{
-		//TODO: Переименование групп. Вначале замена одного имени на другое, затем вопрос, добавлять ли имя, если его не было?
 		const string AppRecordKey = "BargElectroLinesGroup";
 		Document dwg;
 		Database CurrentDatabase;
@@ -438,6 +437,9 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Тестовый метод
+		/// </summary>
 		[CommandMethod("ShowDialogue")]
 		public void ShowDialogue()
 		{
@@ -450,6 +452,9 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Тестовый метод
+		/// </summary>
 		[CommandMethod("test")]
 		public void test()
 		{

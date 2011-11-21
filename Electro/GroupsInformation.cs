@@ -15,14 +15,14 @@ using Autodesk.AutoCAD.DatabaseServices;
 namespace BargElectro
 {
 	/// <summary>
-	/// Description of GroupsInformation.
+	/// Класс для работы с объектами с группами
 	/// </summary>
 	public class GroupsInformation:IEnumerable
 		//TODO: проверить скорость открытия транзакций. что если использовать транзакции в каждом методе класса?
 	{
-		List<GroupObject> groupObjects;
+		List<GroupObject> groupObjects; // Список объектов с группами
 		Transaction transaction;
-		List<string> groupList;
+		List<string> groupList; // Список групп
 		
 		public List<string> GroupList
 		{
@@ -44,6 +44,9 @@ namespace BargElectro
 			GetGroupsInformation();
 		}
 		
+		/// <summary>
+		/// Итерирует чертеж и собирает информацию по группам
+		/// </summary>
 		void GetGroupsInformation()
 		{
 			BlockTable bt = (BlockTable)transaction.GetObject(
@@ -71,6 +74,11 @@ namespace BargElectro
 			groupList.Sort();
 		}
 		
+		/// <summary>
+		/// Добавляет группу к объекту
+		/// </summary>
+		/// <param name="objectid">id объекта для добавления группы</param>
+		/// <param name="group">имя группы для добавления</param>
 		public void AppendGroupToObject(ObjectId objectid, string group)
 			//TODO: При добавлении новой группы не обновляется список групп (а надо ли это, ведь он считывается заново при каждом вызове комманд?)
 		{
@@ -89,6 +97,11 @@ namespace BargElectro
 			groupObjects[index].WriteGroups();
 		}
 		
+		/// <summary>
+		/// Удаление группы из объекта
+		/// </summary>
+		/// <param name="objectid">id объекта для удаления группы</param>
+		/// <param name="group">имя группы для удаления</param>
 		public void DeleteGroupFromObject(ObjectId objectid, string group)
 		{
 			GroupObject groupObj = new GroupObject(objectid, transaction);
@@ -104,6 +117,11 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Возвращает группы объекта
+		/// </summary>
+		/// <param name="objectid">id объекта для получения информации</param>
+		/// <returns>список групп объекта</returns>
 		public List<string> GetGroupsOfObject(ObjectId objectid)
 		{
 			if (objectid!=null)
@@ -118,6 +136,11 @@ namespace BargElectro
 			return null;
 		}
 		
+		/// <summary>
+		/// Возвращает объекты, принадлежащие группе
+		/// </summary>
+		/// <param name="group">Имя группы для поиска</param>
+		/// <returns>Список ObjectId с группой</returns>
 		public List<ObjectId> GetObjectsOfGroup(string group)
 		{
 			List<ObjectId> objectsOfGroup = new List<ObjectId>();
@@ -134,6 +157,12 @@ namespace BargElectro
 			return objectsOfGroup;
 		}
 		
+		/// <summary>
+		/// Переименование группы объекта
+		/// </summary>
+		/// <param name="objectid">id объекта для переименования</param>
+		/// <param name="previousName">Первоначальное имя группы</param>
+		/// <param name="newName">Новое имя группы</param>
 		public void RenameGroupOfObject(ObjectId objectid, string previousName, string newName)
 		{
 			GroupObject groupObj = new GroupObject(objectid, transaction);
@@ -145,6 +174,10 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Реализация IEnumerable
+		/// </summary>
+		/// <returns>Итератор</returns>
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return groupObjects.GetEnumerator();

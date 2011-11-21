@@ -1,10 +1,8 @@
 ﻿/*
- * Created by SharpDevelop.
  * User: aleksey.nakoryakov
  * Date: 27.09.2011
  * Time: 10:45
  * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
 using System.Collections.Generic;
@@ -18,7 +16,7 @@ namespace BargElectro
 	/// </summary>
 	public class GroupObject: IEquatable<GroupObject>
 	{
-		const string AppRecordKey = "BargElectroLinesGroup";
+		const string AppRecordKey = "BargElectroLinesGroup"; //Зарезервированное имя словаря для списка групп
 		List<string> GroupList; //Список групп, к которым принадлежит объект
 		ObjectId id; //ObjectId объекта entity, а не xrecord
 		public ObjectId objectid
@@ -26,10 +24,10 @@ namespace BargElectro
 			get {return id;}
 		}
 		Transaction transaction;
-		bool hasGroup;
+		bool hasGroup; // Имеет ли группы? TODO: Необходимо удалить
 		public bool HasGroup
 		{
-			get {return hasGroup;}
+			get {return GroupList.Count != 0;}
 		}
 		public GroupObject()
 		{
@@ -44,6 +42,10 @@ namespace BargElectro
 			hasGroup = GroupList != null;
 		}
 		
+		/// <summary>
+		/// Для инициализации считывает группы объекта из Xrecord
+		/// </summary>
+		/// <returns>Список групп, считанный из Xrecord</returns>
 		private List<string> ReadGroups()
 		{
 			List<string> groups = new List<string>();
@@ -53,7 +55,7 @@ namespace BargElectro
 				// Проверяем, есть ли словарь у объекта
 				if (entity.ExtensionDictionary != ObjectId.Null)
 				{
-					//TODO: доделать обработку exception
+					//TODO: доделать обработку exception, как-то можно узнать удален ли словарь?
 					try
 					{
 						using (DBDictionary dict = transaction.GetObject(
@@ -74,15 +76,19 @@ namespace BargElectro
 							}
 						}
 					}
-					catch (Exception)
+					catch (Autodesk.AutoCAD.Runtime.Exception ex)
 					{
-//						id.Database.
+						
 					}
 				}
 			}
 			return null;
 		}
 		
+		/// <summary>
+		/// Запись групп в Xrecord объекта, необходимо вызывать каждый раз,
+		/// когда происходят изменения
+		/// </summary>
 		public void WriteGroups()
 		{
 			Entity entity = transaction.GetObject(id, OpenMode.ForWrite) as Entity;
@@ -142,11 +148,19 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Возвращает список групп объекта
+		/// </summary>
+		/// <returns>Список групп</returns>
 		public List<string> GetGroups()
 		{
 			return this.GroupList;
 		}
 		
+		/// <summary>
+		/// Добавление группы к объекту
+		/// </summary>
+		/// <param name="group">Имя группы, которую надо добавить</param>
 		public void AddGroup(string group)
 		{
 			if (group == null) return;
@@ -165,6 +179,10 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Удаление группы из объекта
+		/// </summary>
+		/// <param name="group">Имя группы для удаления</param>
 		public void DeleteGroup(string group)
 		{
 			if ((group != null)&&(GroupList.Contains(group)))
@@ -174,6 +192,12 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Замена одной группы в объекте на другую
+		/// </summary>
+		/// <param name="groupFrom">Заменяемая группа</param>
+		/// <param name="groupTo">Группа, на которую меняем,
+		/// если уже есть - просто удаляем группу groupFrom</param>
 		public void ChangeGroup(string groupFrom, string groupTo)
 		{
 			if ((groupFrom != null)&&(groupTo != null))
@@ -193,6 +217,11 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Проверяет, относится ли данный GroupObject к конкретной группе
+		/// </summary>
+		/// <param name="group">Группа, принадлежность к которой проверяем</param>
+		/// <returns>Принадлежит или нет?</returns>
 		public bool IsBelongToGroup(string group)
 		{
 			if (GroupList.Contains(group))
@@ -205,6 +234,11 @@ namespace BargElectro
 			}
 		}
 		
+		/// <summary>
+		/// Реализация интерфейса IEquatable
+		/// </summary>
+		/// <param name="other">другой объект для сравнения</param>
+		/// <returns>Равны объекты или нет</returns>
 		public bool Equals(GroupObject other)
 		{
 			if (this.objectid == other.objectid)
@@ -215,6 +249,15 @@ namespace BargElectro
 			{
 				return false;
 			}
+		}
+		
+		/// <summary>
+		/// Заготовка для обработки исключений внутри класса
+		/// </summary>
+		/// <param name="ex">исключение для обработки</param>
+		void ExceptionHandling(Autodesk.AutoCAD.Runtime.Exception ex)
+		{
+			
 		}
 	}
 }
