@@ -27,7 +27,7 @@ namespace BargElectro
 		bool hasGroup; // Имеет ли группы? TODO: Необходимо удалить
 		public bool HasGroup
 		{
-			get {return GroupList.Count != 0;}
+			get {return hasGroup;}
 		}
 		public GroupObject()
 		{
