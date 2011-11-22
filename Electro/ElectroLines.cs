@@ -5,12 +5,13 @@ using System.Linq;
 using System.Text;
 
 //Autodesk
-using acad = Autodesk.AutoCAD.ApplicationServices.Application;
-using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
+using Autodesk.AutoCAD.Internal;
+using Autodesk.AutoCAD.Runtime;
+using acad = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(BargElectro.ElectroLines))]
 
@@ -18,7 +19,6 @@ namespace BargElectro
 {
 	public class ElectroLines
 	{
-		//TODO: Переименование групп. Вначале замена одного имени на другое, затем вопрос, добавлять ли имя, если его не было?
 		const string AppRecordKey = "BargElectroLinesGroup";
 		Document dwg;
 		Database CurrentDatabase;
@@ -39,8 +39,8 @@ namespace BargElectro
 			using (Transaction acadTrans = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(acadTrans, CurrentDatabase);
-				//Спрашиваем имя группы (если уже есть группы - выводим как опции запроса)
-				string GroupName = AskForGroup(false, groupsEntities.GroupList);
+				//Спрашиваем имя группы
+				string GroupName = AskForGroup(true, groupsEntities.GroupList);
 				if (GroupName != null)
 				{
 					// Готовим опции для запроса элементов группы
@@ -126,7 +126,7 @@ namespace BargElectro
 			using (Transaction transaction = CurrentDatabase.TransactionManager.StartTransaction())
 			{
 				GroupsInformation groupsEntities = new GroupsInformation(transaction, CurrentDatabase);
-				string group = AskForGroup(true, groupsEntities.GroupList);
+				string group = AskForGroup(false, groupsEntities.GroupList);
 				if (group != null)
 				{
 					editor.SetImpliedSelection(groupsEntities.GetObjectsOfGroup(group).ToArray());
@@ -137,44 +137,30 @@ namespace BargElectro
 		/// <summary>
 		/// Метод выводит запрос на имя группы, существующие группы выводятся в качетсве ключевых слов
 		/// </summary>
-		/// <param name="existing">запрос существующей группы, или новой</param>
+		/// <param name="CanAdd">запрос существующей группы, или новой</param>
 		/// <param name="groups">список существующих групп</param>
 		/// <returns>имя введённой группы</returns>
-		string AskForGroup(bool existing, List<string> groups)
+		string AskForGroup(bool CanAdd, List<string> groups)
 		{
-			PromptKeywordOptions prmptKeywordOpt = new PromptKeywordOptions("\nВыберите группу: ");
-			foreach (string group in groups)
+			if (CanAdd)
 			{
-				prmptKeywordOpt.Keywords.Add(group);
-			}
-			prmptKeywordOpt.AllowNone = false;
-			if (groups.Count != 0)
-			{
-				prmptKeywordOpt.Keywords.Default = groups[0];
-			}
-			if (existing)
-			{
-				prmptKeywordOpt.AllowArbitraryInput = false;
-			}
-			else
-			{
-				prmptKeywordOpt.Message = "\nВведите наименование группы: ";
-				prmptKeywordOpt.AllowArbitraryInput = true;
-			}
-			PromptResult result = dwg.Editor.GetKeywords(prmptKeywordOpt);
-			if (result.Status == PromptStatus.OK)
-			{
-				if (result.StringResult == "")
+				BargElectro.Windows.ListAddGroupsWindow win =
+					new BargElectro.Windows.ListAddGroupsWindow(groups);
+				if (true == win.ShowDialog())
 				{
-					dwg.Editor.WriteMessage("\nНеобходимо ввести наименование группы!");
-					return null;
+					return win.Group;
 				}
-				return result.StringResult;
 			}
 			else
 			{
-				return null;
+				BargElectro.Windows.ListSelectGroupsWindow win =
+					new BargElectro.Windows.ListSelectGroupsWindow(groups);
+				if (true == win.ShowDialog())
+				{
+					return win.Group;
+				}
 			}
+			return null;
 		}
 		
 		/// <summary>
@@ -209,7 +195,7 @@ namespace BargElectro
 						}
 					}
 					groupList.Sort();
-					string groupName = AskForGroup(true, groupList);
+					string groupName = AskForGroup(false, groupList);
 					if (groupName!=null)
 					{
 						foreach (SelectedObject selectedObject in selectionSet)
@@ -255,10 +241,10 @@ namespace BargElectro
 						}
 					}
 					groupList.Sort();
-					string previousName = AskForGroup(true, groupList);
+					string previousName = AskForGroup(false, groupList);
 					if (previousName!=null)
 					{
-						string newName = AskForGroup(false, groupEntities.GroupList);
+						string newName = AskForGroup(true, groupEntities.GroupList);
 						if (newName!=null)
 						{
 							foreach (SelectedObject selectedObject in selectionSet)
@@ -318,9 +304,9 @@ namespace BargElectro
 					return;
 				}
 				ed.WriteMessage("\nПереименовываем группу:");
-				string oldGroupName = AskForGroup(true, groupList);
+				string oldGroupName = AskForGroup(false, groupList);
 				ed.WriteMessage(oldGroupName);
-				string newGroupName = AskForGroup(false, groupList);
+				string newGroupName = AskForGroup(true, groupList);
 				ed.WriteMessage(newGroupName);
 				foreach (GroupObject go in groupEntities)
 				{
@@ -360,6 +346,123 @@ namespace BargElectro
 					ed.WriteMessage("\nФфух!");
 					break;
 			}
+		}
+		
+		[CommandMethod("GLeader")]
+		public void DrawGroupLeader()
+		{
+			Editor ed = dwg.Editor;
+			PromptEntityOptions prmtEntityOpts = new PromptEntityOptions("Укажите линию");
+			prmtEntityOpts.AllowNone = false;
+			prmtEntityOpts.SetRejectMessage("Должна быть линия или полилиния!");
+			prmtEntityOpts.AddAllowedClass(typeof(Line), true);
+			prmtEntityOpts.AddAllowedClass(typeof(Polyline), true);
+			PromptEntityResult entRes = ed.GetEntity(prmtEntityOpts);
+			if (entRes.Status!= PromptStatus.OK)
+			{
+				return;
+			}
+			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				GroupsInformation groupEntities = new GroupsInformation(tr, CurrentDatabase);
+				List<string> groupList = groupEntities.GetGroupsOfObject(entRes.ObjectId);
+				if (groupList == null)
+				{
+					ed.WriteMessage("За указанным объектом не значится никаких групп!");
+					return;
+				}
+				PromptPointOptions pointOpts = new PromptPointOptions("\nУкажите точку вставки блока: ");
+				PromptPointResult pointRes = ed.GetPoint(pointOpts);
+				if (pointRes.Status!= PromptStatus.OK)
+				{
+					return;
+				}
+				BlockTable bt = (BlockTable)CurrentDatabase.BlockTableId.GetObject(OpenMode.ForRead);
+				BlockTableRecord btrSpace = (BlockTableRecord)CurrentDatabase.CurrentSpaceId
+					.GetObject(OpenMode.ForWrite);
+				if (!bt.Has("group_vinoska"))
+				{
+				    ed.WriteMessage("\nВ файле не определён блок выноски!!");
+				    return;
+				}
+				BlockTableRecord gleaderBtr = (BlockTableRecord)bt["group_vinoska"].GetObject(OpenMode.ForRead);
+				BlockReference gleader = new BlockReference(pointRes.Value, gleaderBtr.ObjectId);
+				btrSpace.AppendEntity(gleader);
+				tr.AddNewlyCreatedDBObject(gleader, true);
+				
+				//Если блок аннотативный - добавляем в таблицу аннотативных масштабов блока текущий масштаб
+				ObjectContextManager ocm = CurrentDatabase.ObjectContextManager;
+				ObjectContextCollection occ = ocm.GetContextCollection("ACDB_ANNOTATIONSCALES");
+				if (gleaderBtr.Annotative == AnnotativeStates.True)
+				{
+					ObjectContexts.AddContext(gleader, occ.CurrentContext);
+				}
+				
+				gleader.SetDatabaseDefaults();
+				if (gleaderBtr.HasAttributeDefinitions)
+				{
+					var attDefs = gleaderBtr.Cast<ObjectId>()
+						.Where(n => n.ObjectClass.Name == "AcDbAttributeDefinition")
+						.Select(n => (AttributeDefinition)n.GetObject(OpenMode.ForRead));
+					foreach (AttributeDefinition attdef in attDefs)
+					{
+						AttributeReference attref = new AttributeReference();
+						attref.SetAttributeFromBlock(attdef, gleader.BlockTransform);
+						gleader.AttributeCollection.AppendAttribute(attref);
+						tr.AddNewlyCreatedDBObject(attref, true);
+						if (gleaderBtr.Annotative == AnnotativeStates.True)
+						{
+							ObjectContexts.AddContext(attref, occ.CurrentContext);
+						}
+						int attCount = int.Parse(attref.Tag.Remove(0,10));
+						if (attCount<=groupList.Count)
+						{
+							attref.TextString = groupList[attCount-1];
+						}
+					}
+				}
+				
+				if (gleaderBtr.IsDynamicBlock)
+				{
+					DynamicBlockReferencePropertyCollection dynBRefColl = gleader.DynamicBlockReferencePropertyCollection;
+					foreach (DynamicBlockReferenceProperty prop in dynBRefColl)
+					{
+						if (prop.PropertyName == "Lookup1")
+						{
+							prop.Value = prop.GetAllowedValues()[groupList.Count-1];
+						}
+					}
+				}
+				tr.Commit();
+			}
+		}
+		
+		/// <summary>
+		/// Тестовый метод
+		/// </summary>
+		[CommandMethod("ShowDialogue")]
+		public void ShowDialogue()
+		{
+			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				GroupsInformation ents = new GroupsInformation(tr, CurrentDatabase);
+				BargElectro.Windows.ListSelectGroupsWindow win =
+					new BargElectro.Windows.ListSelectGroupsWindow(ents.GroupList);
+				win.ShowDialog();
+			}
+		}
+		
+		/// <summary>
+		/// Тестовый метод
+		/// </summary>
+		[CommandMethod("test")]
+		public void test()
+		{
+			DateTime begin = DateTime.Now;
+			GetGroupLengths();
+			DateTime end = DateTime.Now;
+			TimeSpan ts = end - begin;
+			dwg.Editor.WriteMessage("\nВремя работы: {0}", ts.TotalMilliseconds);
 		}
 	}
 }

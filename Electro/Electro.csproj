@@ -17,6 +17,7 @@
     <NoStdLib>False</NoStdLib>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+    <SourceAnalysisOverrideSettingsFile>C:\Users\aleksey\AppData\Roaming\ICSharpCode/SharpDevelop4.1\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>Full</DebugType>
@@ -53,16 +54,16 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="acdbmgd, Version=18.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\AutoCAD 2010\acdbmgd.dll</HintPath>
+    <Reference Include="AcDbMgd">
+      <HintPath>C:\ObjectARX 2010\inc-x64\AcDbMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="acmgd, Version=18.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\AutoCAD 2010\acmgd.dll</HintPath>
+    <Reference Include="AcMgd">
+      <HintPath>C:\ObjectARX 2010\inc-x64\AcMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -75,12 +76,28 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ElectroLines.cs" />
     <Compile Include="GroupObject.cs" />
     <Compile Include="GroupsInformation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Windows\ListAddGroupsWindow.xaml.cs">
+      <DependentUpon>ListAddGroupsWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Windows\ListSelectGroupsWindow.xaml.cs">
+      <DependentUpon>ListSelectGroupsWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Windows" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Windows\ListAddGroupsWindow.xaml" />
+    <Page Include="Windows\ListSelectGroupsWindow.xaml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
