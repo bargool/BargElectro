@@ -15,67 +15,31 @@ namespace DepthFirstSearch
 	/// </summary>
 	public class Node : IEquatable<Node>
 	{
-		public double PathCostFromRoot {get; set;}
-//		int hitCounter;
-//		public int HitCounter {get
-//			{ return hitCounter; }
-//		}
+		#region Properties
+		public double PathCostFromRoot {get; private set;}
+		int hitCounter;
+		public int HitCounter {get
+			{ return hitCounter; }
+		}
 		
-		protected List<Node> childs;
-		public List<Node> Childs {get
-			{ return childs; }
-		}
-		protected List<Line> edgesToChilds;
-		public List<Line> EdgesToChilds {get
-			{ return edgesToChilds; }
-		}
-		protected Line parentEdge;
-		public Line ParentEdge {get
-			{ return parentEdge; }
-		}
-		protected Node parent;
-		public Node Parent {get
-			{ return parent; }
-		}
-//		bool isLeaf;
-		public bool IsLeaf {
-			get{ return childs.Count == 0; }
-		}
+		public int index {get; set;}
+		
 		protected Point3d point;
 		public Point3d Point {
 			get	{ return point; }
 		}
-		
+		#endregion
+		#region Constructors
 		public Node()
 		{
 		}
 		
-		public Node(Point3d p, Line parentEdge, Node parentNode, double pathCostFR)
+		public Node(Point3d p, double pathCostFR)
 		{
 			point = p;
 			PathCostFromRoot = pathCostFR;
-			this.parentEdge = parentEdge;
-			this.parent = parentNode;
 		}
-		
-		public virtual void GetChildsAndEdges(Line[] edges)
-		{
-			childs = new List<Node>();
-			edgesToChilds = new List<Line>();
-			foreach (Line edge in edges)
-			{
-				if (edge.StartPoint.IsEqualTo(this.point)&&!edge.EndPoint.IsEqualTo(parent.Point))
-				{
-					childs.Add(new Node(edge.EndPoint, edge, this, this.PathCostFromRoot+edge.Length));
-					edgesToChilds.Add(edge);
-				}
-				if (edge.EndPoint.IsEqualTo(this.point)&&!edge.StartPoint.IsEqualTo(parent.Point))
-				{
-					childs.Add(new Node(edge.StartPoint, edge, this, this.PathCostFromRoot+edge.Length));
-					edgesToChilds.Add(edge);
-				}
-			}
-		}
+		#endregion
 		
 		public bool Equals(Node other)
 		{
@@ -88,15 +52,5 @@ namespace DepthFirstSearch
 				return false;
 			}
 		}
-		
-//		List<Node> GetChilds(Line[] lines)
-//		{
-//			
-//		}
-//		
-//		List<Edge> GetEdges()
-//		{
-//			
-//		}
 	}
 }
