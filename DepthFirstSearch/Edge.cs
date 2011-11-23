@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
+using Autodesk.AutoCAD.DatabaseServices;
 
 namespace DepthFirstSearch
 {
@@ -17,15 +18,17 @@ namespace DepthFirstSearch
 	{
 		public int BeginNodeIndex {get; private set;}
 		public int EndNodeIndex {get; private set;}
+		public ObjectId EdgeGeometry {get; private set;}
 		
 		public Edge()
 		{
 		}
 		
-		public Edge(int beginNodeIndex, int endNodeIndex)
+		public Edge(int beginNodeIndex, int endNodeIndex, ObjectId edgeGeometry)
 		{
 			this.BeginNodeIndex = beginNodeIndex;
 			this.EndNodeIndex = endNodeIndex;
+			this.EdgeGeometry = edgeGeometry;
 		}
 	}
 }

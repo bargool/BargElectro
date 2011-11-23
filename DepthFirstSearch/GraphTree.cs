@@ -26,12 +26,15 @@ namespace DepthFirstSearch
 		
 		public GraphTree(Node root, Line[] lines)
 		{
+			this.root = root;
 			
 		}
 		
-		void AppendNode(Node node)
+		void AddNode(Node node)
+			//TODO: Что с индексом?!
 		{
-			
+			node.Index = nodes.Count;
+			nodes.Add(node);
 		}
 		
 		void DeleteNode(Node node)
