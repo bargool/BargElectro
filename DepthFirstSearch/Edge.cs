@@ -14,7 +14,7 @@ namespace DepthFirstSearch
 	/// <summary>
 	/// Description of Edge.
 	/// </summary>
-	public class Edge
+	public class Edge : IEquatable<Edge>
 	{
 		public int BeginNodeIndex {get; private set;}
 		public int EndNodeIndex {get; private set;}
@@ -29,6 +29,18 @@ namespace DepthFirstSearch
 			this.BeginNodeIndex = beginNodeIndex;
 			this.EndNodeIndex = endNodeIndex;
 			this.EdgeGeometry = edgeGeometry;
+		}
+		
+		public bool Equals(Edge other)
+		{
+			if (this.EdgeGeometry==other.EdgeGeometry)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 	}
 }
