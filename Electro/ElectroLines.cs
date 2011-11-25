@@ -461,8 +461,15 @@ namespace BargElectro
 			}
 			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
 			{
-				BlockTableRecord btr = (BlockTableRecord)CurrentDatabase.CurrentSpaceId.GetObject(OpenMode.ForRead);
-				var plineSegments = btr.Cast<ObjectId>()
+				GroupsInformation groupsEntities = new GroupsInformation(tr, CurrentDatabase);
+				string group = AskForGroup(false, groupsEntities.GroupList);
+				if (group == null)
+				{
+					return;
+				}
+				
+				List<ObjectId> groupLines = groupsEntities.GetObjectsOfGroup(group);
+				var plineSegments = groupLines
 					.Where(n => n.GetObject(OpenMode.ForRead) is Polyline)
 					.SelectMany(n => {
 					            	DBObjectCollection coll = new DBObjectCollection();
@@ -470,14 +477,13 @@ namespace BargElectro
 					            	return coll.Cast<DBObject>();
 					            })
 					.Concat(
-						btr.Cast<ObjectId>()
+						groupLines
 						.Where(n => n.GetObject(OpenMode.ForRead) is Line)
 						.Select(n => (DBObject)n.GetObject(OpenMode.ForRead)));
 				Line[] lines = (from DBObject l in plineSegments
 					where l is Line
 					select l as Line).ToArray();
 				DepthFirstSearch.GraphTree tree = new DepthFirstSearch.GraphTree(res.Value, lines);
-				ed.WriteMessage("\nОбработано {0} участков", tree.Edges.Count);
 				ed.WriteMessage("\nСамый длинный участок - {0}",tree.FarestNode.PathCostFromRoot);
 			}
 		}
