@@ -21,7 +21,6 @@ namespace DepthFirstSearch
 	public class GraphTree
 	{
 		Editor ed;
-//		Node root;
 		public List<Node> Nodes {get; private set;}
 		public List<Edge> Edges {get; private set;}
 		public Node FarestNode {get; private set;}
@@ -34,7 +33,6 @@ namespace DepthFirstSearch
 		public GraphTree(Point3d rootPoint, Line[] lines)
 		{
 			ed = acad.DocumentManager.MdiActiveDocument.Editor;
-//			this.root = new Node(rootPoint, 0, -1);
 			this.Nodes = new List<Node>();
 			this.Edges = new List<Edge>();
 			AddNode(new Node(rootPoint, 0));
@@ -100,18 +98,9 @@ namespace DepthFirstSearch
 		/// <param name="lines">Набор линий для поиска граней</param>
 		void AddChildEdgesAndNodes(Node node, Line[] lines)
 		{
-			//TODO: Обработка зацикливания
-//			foreach (Edge edge in edges)
-//			{
-//				if (FindChilds(node).Length!=0)
-//				{
-//					throw new Exception("Похоже, зациклились");
-//				}
-//			}
+			//TODO: Сделать обработку зацикливания
 			foreach (Line line in lines)
 			{
-//				ed.WriteMessage("\nОбрабатываем линию ({0}, {1}) - ({2}, {3})",
-//				               line.StartPoint.X, line.StartPoint.Y, line.EndPoint.X, line.EndPoint.Y);
 				if (line.StartPoint.IsEqualTo(node.Point)&&FindNode(line.EndPoint)==null)
 				{
 					AddNode(new Node(line.EndPoint, node.PathCostFromRoot+line.Length));
@@ -125,28 +114,41 @@ namespace DepthFirstSearch
 			}
 		}
 
+		/// <summary>
+		/// Поиск узла по индексу
+		/// </summary>
+		/// <param name="index">Индекс</param>
+		/// <returns>Узел, удовлетворяющий условию поиска, либо null, если не найден</returns>
 		Node FindNode(int index)
 		{
 			return Nodes.FirstOrDefault(n => n.Index==index);
 		}
 		
+		/// <summary>
+		/// Поиск узла по координатам точки
+		/// </summary>
+		/// <param name="point">Точка, в которой должен находится узел</param>
+		/// <returns>Узел, удовлетворяющий условию поиска, либо null, если не найден</returns>
 		Node FindNode(Point3d point)
 		{
-//			if (point.IsEqualTo(root.Point))
-//			{
-//				return root;
-//			}
-//			else
-//			{
-				return Nodes.FirstOrDefault(n => point.IsEqualTo(n.Point));
-//			}
+			return Nodes.FirstOrDefault(n => point.IsEqualTo(n.Point));
 		}
 		
+		/// <summary>
+		/// Поиск родительского узла
+		/// </summary>
+		/// <param name="node">Узел, для которого ищем родителя</param>
+		/// <returns>Узел, удовлетворяющий условию поиска, либо null, если не найден</returns>
 		Node FindParent(Node node)
 		{
 			return FindEdgeToParent(node)!=null ? FindNode(FindEdgeToParent(node).BeginNodeIndex) : null;
 		}
 		
+		/// <summary>
+		/// Поиск дочерних узлов
+		/// </summary>
+		/// <param name="node">Узел, для которого ищем детей</param>
+		/// <returns>Массив узлов, удовлетворяющих условиям поиска</returns>
 		Node[] FindChilds(Node node)
 		{
 			return 
@@ -154,35 +156,26 @@ namespace DepthFirstSearch
 				 select FindNode(edge.EndNodeIndex)).ToArray();
 		}
 		
+		/// <summary>
+		/// Поиск грани до родительского узла
+		/// </summary>
+		/// <param name="node">Узел, для которого ищем родителя</param>
+		/// <returns>Грань, удовлетворяющая условию поиска, либо null, если не найдена</returns>
 		Edge FindEdgeToParent(Node node)
 		{
 			return Edges.FirstOrDefault(n => n.EndNodeIndex == node.Index);
 		}
 		
+		/// <summary>
+		/// Поиск граней до дочерних узлов
+		/// </summary>
+		/// <param name="node">Узел, для которого ищем детей</param>
+		/// <returns>Массив граней, удовлетворяющих условиям поиска</returns>
 		Edge[] FindEdgesToChilds(Node node)
 		{
 			return (from Edge edge in Edges
 				where edge.BeginNodeIndex==node.Index
 				select edge).ToArray();
 		}
-		
-//		void GetChildsAndEdges(Line[] edges)
-//		{
-//			childs = new List<Node>();
-//			edgesToChilds = new List<Edge>();
-//			foreach (Line edge in edges)
-//			{
-//				if (edge.StartPoint.IsEqualTo(this.point)&&!edge.EndPoint.IsEqualTo(parent.Point))
-//				{
-//					childs.Add(new Node(edge.EndPoint, edge, this, this.PathCostFromRoot+edge.Length));
-//					edgesToChilds.Add(edge);
-//				}
-//				if (edge.EndPoint.IsEqualTo(this.point)&&!edge.StartPoint.IsEqualTo(parent.Point))
-//				{
-//					childs.Add(new Node(edge.StartPoint, edge, this, this.PathCostFromRoot+edge.Length));
-//					edgesToChilds.Add(edge);
-//				}
-//			}
-//		}
 	}
 }

@@ -17,13 +17,8 @@ namespace DepthFirstSearch
 	{
 		#region Properties
 		public double PathCostFromRoot {get; private set;}
-		public int HitCounter {get; set;}
 		public int Index {get; set;}
-		
-		protected Point3d point;
-		public Point3d Point {
-			get	{ return point; }
-		}
+		public Point3d Point {get; private set;}
 		#endregion
 		#region Constructors
 		public Node()
@@ -34,17 +29,16 @@ namespace DepthFirstSearch
 		
 		public Node(Point3d p, double pathCostFR, int index)
 		{
-			point = p;
+			Point = p;
 			PathCostFromRoot = pathCostFR;
 			this.Index = index;
-			HitCounter = 1;
 		}
 		#endregion
 		
 		//IEquatable
 		public bool Equals(Node other)
 		{
-			if (this.point.IsEqualTo(other.Point))
+			if (this.Point.IsEqualTo(other.Point))
 			{
 				return true;
 			}
