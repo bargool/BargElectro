@@ -27,11 +27,10 @@ namespace DepthFirstSearch
 		#endregion
 		#region Constructors
 		public Node()
-		{
-		}
-		
+			: this(new Point3d(0,0,0), 0) { }
+			
 		public Node(Point3d p, double pathCostFR)
-			: this(p, pathCostFR, -1) { }
+			: this(p, pathCostFR, 0) { }
 		
 		public Node(Point3d p, double pathCostFR, int index)
 		{

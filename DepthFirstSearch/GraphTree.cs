@@ -7,6 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using acad = Autodesk.AutoCAD.ApplicationServices.Application;
+using Autodesk.AutoCAD.EditorInput;
+
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 
@@ -17,18 +20,31 @@ namespace DepthFirstSearch
 	/// </summary>
 	public class GraphTree
 	{
-		Node root;
-		List<Node> nodes = new List<Node>();
-		List<Edge> edges = new List<Edge>();
+		Editor ed;
+//		Node root;
+		public List<Node> Nodes {get; private set;}
+		public List<Edge> Edges {get; private set;}
+		public Node FarestNode {get; private set;}
 		
 		public GraphTree()
 		{
+			throw new NotImplementedException();
 		}
 		
-		public GraphTree(Node root, Line[] lines)
+		public GraphTree(Point3d rootPoint, Line[] lines)
 		{
-			this.root = root;
-			
+			ed = acad.DocumentManager.MdiActiveDocument.Editor;
+//			this.root = new Node(rootPoint, 0, -1);
+			this.Nodes = new List<Node>();
+			this.Edges = new List<Edge>();
+			AddNode(new Node(rootPoint, 0));
+			this.FarestNode = Nodes.First();
+			int count = 0;
+			do
+			{
+				AddChildEdgesAndNodes(Nodes[count], lines);
+				count++;
+			} while (count<Nodes.Count);
 		}
 		/// <summary>
 		/// Добавляет узел
@@ -36,10 +52,16 @@ namespace DepthFirstSearch
 		/// <param name="node">Узел для добавления. Свойство Index будет переопределено
 		/// в соотвествии с зарегистрированными узлами в графе</param>
 		void AddNode(Node node)
-			//TODO: Что с индексом?!
 		{
-			node.Index = ++nodes[nodes.Count-1].Index;
-			nodes.Add(node);
+			node.Index = Nodes.Count != 0 ? Nodes.Last().Index+1 : 0;
+			Nodes.Add(node);
+			if (FarestNode!=null)
+			{
+				if (node.PathCostFromRoot>FarestNode.PathCostFromRoot)
+				{
+					FarestNode = node;
+				}
+			}
 		}
 		
 		/// <summary>
@@ -68,7 +90,7 @@ namespace DepthFirstSearch
 		/// <param name="geometry">Объект, представляющий грань</param>
 		void AddEdge(Node beginnode, Node endnode, ObjectId geometry)
 		{
-			edges.Add(new Edge(beginnode.Index, endnode.Index, geometry));
+			Edges.Add(new Edge(beginnode.Index, endnode.Index, geometry));
 		}
 		
 		/// <summary>
@@ -88,24 +110,36 @@ namespace DepthFirstSearch
 //			}
 			foreach (Line line in lines)
 			{
+//				ed.WriteMessage("\nОбрабатываем линию ({0}, {1}) - ({2}, {3})",
+//				               line.StartPoint.X, line.StartPoint.Y, line.EndPoint.X, line.EndPoint.Y);
 				if (line.StartPoint.IsEqualTo(node.Point)&&FindNode(line.EndPoint)==null)
 				{
 					AddNode(new Node(line.EndPoint, node.PathCostFromRoot+line.Length));
-					AddEdge(node, nodes.Last(), line);
-//					childs.Add(new Node(edge.EndPoint, edge, this, this.PathCostFromRoot+edge.Length));
-//					edgesToChilds.Add(edge);
+					AddEdge(node, Nodes.Last(), line.ObjectId);
+				}
+				if (line.EndPoint.IsEqualTo(node.Point)&&FindNode(line.StartPoint)==null)
+				{
+					AddNode(new Node(line.StartPoint, node.PathCostFromRoot+line.Length));
+					AddEdge(node, Nodes.Last(), line.ObjectId);
 				}
 			}
 		}
 
 		Node FindNode(int index)
 		{
-			return nodes.DefaultIfEmpty(null).First(n => n.Index==index);
+			return Nodes.FirstOrDefault(n => n.Index==index);
 		}
 		
 		Node FindNode(Point3d point)
 		{
-			return nodes.DefaultIfEmpty(null).First(n => point.IsEqualTo(n.Point));
+//			if (point.IsEqualTo(root.Point))
+//			{
+//				return root;
+//			}
+//			else
+//			{
+				return Nodes.FirstOrDefault(n => point.IsEqualTo(n.Point));
+//			}
 		}
 		
 		Node FindParent(Node node)
@@ -122,12 +156,12 @@ namespace DepthFirstSearch
 		
 		Edge FindEdgeToParent(Node node)
 		{
-			return edges.DefaultIfEmpty(null).First(n => n.EndNodeIndex == node.Index);
+			return Edges.FirstOrDefault(n => n.EndNodeIndex == node.Index);
 		}
 		
 		Edge[] FindEdgesToChilds(Node node)
 		{
-			return (from Edge edge in edges
+			return (from Edge edge in Edges
 				where edge.BeginNodeIndex==node.Index
 				select edge).ToArray();
 		}
