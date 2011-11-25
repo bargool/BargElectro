@@ -440,21 +440,6 @@ namespace BargElectro
 		/// <summary>
 		/// Тестовый метод
 		/// </summary>
-		[CommandMethod("ShowDialogue")]
-		public void ShowDialogue()
-		{
-			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
-			{
-				GroupsInformation ents = new GroupsInformation(tr, CurrentDatabase);
-				BargElectro.Windows.ListSelectGroupsWindow win =
-					new BargElectro.Windows.ListSelectGroupsWindow(ents.GroupList);
-				win.ShowDialog();
-			}
-		}
-		
-		/// <summary>
-		/// Тестовый метод
-		/// </summary>
 		[CommandMethod("test")]
 		public void test()
 		{
@@ -463,6 +448,38 @@ namespace BargElectro
 			DateTime end = DateTime.Now;
 			TimeSpan ts = end - begin;
 			dwg.Editor.WriteMessage("\nВремя работы: {0}", ts.TotalMilliseconds);
+		}
+		
+		[CommandMethod("Test2")]
+		public void test2()
+		{
+			Editor ed = dwg.Editor;
+			PromptPointResult res = ed.GetPoint("Укажите корневую точку");
+			if (res.Status!= PromptStatus.OK)
+			{
+				return;
+			}
+			using (Transaction tr = CurrentDatabase.TransactionManager.StartTransaction())
+			{
+				BlockTableRecord btr = (BlockTableRecord)CurrentDatabase.CurrentSpaceId.GetObject(OpenMode.ForRead);
+				var plineSegments = btr.Cast<ObjectId>()
+					.Where(n => n.GetObject(OpenMode.ForRead) is Polyline)
+					.SelectMany(n => {
+					            	DBObjectCollection coll = new DBObjectCollection();
+					            	((Polyline)n.GetObject(OpenMode.ForRead)).Explode(coll);
+					            	return coll.Cast<DBObject>();
+					            })
+					.Concat(
+						btr.Cast<ObjectId>()
+						.Where(n => n.GetObject(OpenMode.ForRead) is Line)
+						.Select(n => (DBObject)n.GetObject(OpenMode.ForRead)));
+				Line[] lines = (from DBObject l in plineSegments
+					where l is Line
+					select l as Line).ToArray();
+				DepthFirstSearch.GraphTree tree = new DepthFirstSearch.GraphTree(res.Value, lines);
+				ed.WriteMessage("\nОбработано {0} участков", tree.Edges.Count);
+				ed.WriteMessage("\nСамый длинный участок - {0}",tree.FarestNode.PathCostFromRoot);
+			}
 		}
 	}
 }

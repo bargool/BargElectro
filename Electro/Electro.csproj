@@ -79,6 +79,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DepthFirstSearch\Edge.cs" />
+    <Compile Include="DepthFirstSearch\GraphTree.cs" />
+    <Compile Include="DepthFirstSearch\Node.cs" />
     <Compile Include="ElectroLines.cs" />
     <Compile Include="GroupObject.cs" />
     <Compile Include="GroupsInformation.cs" />
@@ -94,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="GUI_Wins" />
+    <Folder Include="DepthFirstSearch" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="GUI_Wins\ListAddGroupsWindow.xaml" />
