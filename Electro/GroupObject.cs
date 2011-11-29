@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
+using Bargool.Acad.Extensions;
 
 namespace BargElectro
 {
@@ -89,37 +90,12 @@ namespace BargElectro
 			{
 				if (hasGroup)
 				{
-					// Проверяем, есть ли у объекта словарь? Если нет - создаём новый
-					if (entity.ExtensionDictionary==ObjectId.Null)
+					ResultBuffer buffer = new ResultBuffer();
+					foreach (string group in GroupList)
 					{
-						entity.CreateExtensionDictionary();
+						buffer.Add(new TypedValue((int)DxfCode.Text, group));
 					}
-					using (DBDictionary dict = transaction.GetObject(
-						entity.ExtensionDictionary, OpenMode.ForWrite, false) as DBDictionary)
-					{
-						//Готовим данные с именем группы для записи в XRecord
-						ResultBuffer buffer = new ResultBuffer();
-						foreach (string group in GroupList)
-						{
-							buffer.Add(new TypedValue((int)DxfCode.Text, group));
-						}
-						//Проверяем, есть ли запись словаря, закреплённая (мной) за плагином
-						if (dict.Contains(AppRecordKey))
-						{
-							// Если запись уже есть - получаем XRecord, и перезаписываем группы
-							Xrecord xrecord = transaction.GetObject(
-								dict.GetAt(AppRecordKey), OpenMode.ForWrite) as Xrecord;
-							xrecord.Data = buffer;
-						}
-						else
-						{
-							// Словаря нет - создаем запись словаря и XRecord
-							Xrecord xrecord = new Xrecord();
-							xrecord.Data = buffer;
-							dict.SetAt(AppRecordKey, xrecord);
-							transaction.AddNewlyCreatedDBObject(xrecord, true);
-						}
-					}
+					entity.WriteXrecord(AppRecordKey, buffer, true, false);
 				}
 				else
 				{

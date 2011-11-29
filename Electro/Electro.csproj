@@ -79,6 +79,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\Bargool.Acad.Extensions\Bargool.Acad.Extensions\DBObjectExtensions.cs">
+      <Link>Extensions\DBObjectExtensions.cs</Link>
+    </Compile>
     <Compile Include="DepthFirstSearch\Edge.cs" />
     <Compile Include="DepthFirstSearch\GraphTree.cs" />
     <Compile Include="DepthFirstSearch\Node.cs" />
@@ -98,6 +101,7 @@
   <ItemGroup>
     <Folder Include="GUI_Wins" />
     <Folder Include="DepthFirstSearch" />
+    <Folder Include="Extensions" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="GUI_Wins\ListAddGroupsWindow.xaml" />
