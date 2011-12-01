@@ -24,7 +24,7 @@ namespace BargElectro
 			get {return id;}
 		}
 		Transaction transaction;
-		bool hasGroup; // Имеет ли группы? TODO: Необходимо удалить
+		bool hasGroup; // Имеет ли группы?
 		public bool HasGroup
 		{
 			get {return hasGroup;}
