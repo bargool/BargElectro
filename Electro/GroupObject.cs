@@ -99,20 +99,7 @@ namespace BargElectro
 				}
 				else
 				{
-					if (entity.ExtensionDictionary!=ObjectId.Null)
-					{
-						using (DBDictionary dict = (DBDictionary)transaction.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite))
-						{
-							if (dict.Contains(AppRecordKey))
-							{
-							    dict.Remove(AppRecordKey);
-							    if (dict.Count==0)
-							    {
-							    	dict.Erase();
-							    }
-							}
-						}
-					}
+					entity.DeleteXrecord(AppRecordKey);
 				}
 			}
 		}
