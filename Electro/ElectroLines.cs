@@ -32,7 +32,7 @@ namespace BargElectro
 		/// <summary>
 		/// Команда добавляет к линейным примитивам XRecord с именем группы
 		/// </summary>
-		[CommandMethod("AddLinesToGroup")]
+		[CommandMethod("BEAdd")]
 		public void AddLinesToGroup()
 		{
 			Editor editor = dwg.Editor;
@@ -77,7 +77,7 @@ namespace BargElectro
 		/// <summary>
 		/// Команда выводит список групп и суммарную длину в плане
 		/// </summary>
-		[CommandMethod("GetGroupLengths")]
+		[CommandMethod("BELen")]
 		public void GetGroupLengths()
 			//FIXME: Падает если удалить группы, а потом обратиться к ним. Если сделать audit - всё нормально.
 		{
@@ -119,7 +119,7 @@ namespace BargElectro
 		/// <summary>
 		/// Команда запрашивает имя группы и выделяет примитивы, принадлежащие данной группе
 		/// </summary>
-		[CommandMethod("SelectGroup")]
+		[CommandMethod("BESel")]
 		public void SelectGroup()
 		{
 			Editor editor = dwg.Editor;
@@ -166,7 +166,7 @@ namespace BargElectro
 		/// <summary>
 		/// Команда удаляет информацию об указанной группе из примитива
 		/// </summary>
-		[CommandMethod("DeleteGroupFromLine", CommandFlags.UsePickSet)]
+		[CommandMethod("BEDel", CommandFlags.UsePickSet)]
 		public void DeleteGroupFromLine()
 		{
 			Editor editor = dwg.Editor;
@@ -212,7 +212,7 @@ namespace BargElectro
 		/// Команда заменяет (переименовывает группу) информацию о группе с одной на другую, если в примитиве присутсвует
 		/// как первая, так и вторая группа - первая группа удаляется
 		/// </summary>
-		[CommandMethod("ChangeGroupOfLines", CommandFlags.UsePickSet)]
+		[CommandMethod("BEChGr", CommandFlags.UsePickSet)]
 		public void ChangeGroupOfLines()
 		{
 			Editor editor = dwg.Editor;
@@ -261,7 +261,7 @@ namespace BargElectro
 		/// <summary>
 		/// Команда выводит в командную строку список групп выделенных примитивов
 		/// </summary>
-		[CommandMethod("GetGroupsOfObject")]
+		[CommandMethod("BEGet")]
 		public void GetGroupsOfObject()
 		{
 			Editor editor = dwg.Editor;
@@ -289,7 +289,7 @@ namespace BargElectro
 			}
 		}
 		
-		[CommandMethod("BRenGr")]
+		[CommandMethod("BERen")]
 		public void RenameGroup()
 		{
 			Editor ed = dwg.Editor;
@@ -316,7 +316,7 @@ namespace BargElectro
 				transaction.Commit();
 			}
 		}
-		[CommandMethod("BDelGrInfo")]
+		[CommandMethod("BEDelAll")]
 		public void DeleteAllGroupInformation()
 		{
 			Editor ed = dwg.Editor;
@@ -348,7 +348,7 @@ namespace BargElectro
 			}
 		}
 		
-		[CommandMethod("GLeader")]
+		[CommandMethod("BELeader")]
 		public void DrawGroupLeader()
 		{
 			Editor ed = dwg.Editor;
@@ -437,21 +437,8 @@ namespace BargElectro
 			}
 		}
 		
-		/// <summary>
-		/// Тестовый метод
-		/// </summary>
-		[CommandMethod("test")]
-		public void test()
-		{
-			DateTime begin = DateTime.Now;
-			GetGroupLengths();
-			DateTime end = DateTime.Now;
-			TimeSpan ts = end - begin;
-			dwg.Editor.WriteMessage("\nВремя работы: {0}", ts.TotalMilliseconds);
-		}
-		
-		[CommandMethod("Test2")]
-		public void test2()
+		[CommandMethod("BELongest")]
+		public void GetLongestSegment()
 		{
 			Editor ed = dwg.Editor;
 			PromptPointResult res = ed.GetPoint("Укажите корневую точку");
